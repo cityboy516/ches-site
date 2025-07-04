@@ -9,13 +9,14 @@
       margin: 0;
       font-family: Arial, sans-serif;
       color: #f0f0f0;
-      background: linear-gradient(to bottom right, #0f2027, #203a43, #2c5364);
-      background-attachment: fixed;
+      background: url('landing_background.png') no-repeat center center fixed;
+      background-size: cover;
     }
 
     header {
       text-align: center;
       padding: 3rem 1rem 1rem;
+      background-color: rgba(0, 0, 0, 0.5);
     }
 
     header h1 {
@@ -38,7 +39,7 @@
     }
 
     .card {
-      background: #1e2a38;
+      background: rgba(30, 42, 56, 0.95);
       border-radius: 12px;
       overflow: hidden;
       width: 320px;
@@ -90,6 +91,7 @@
       padding: 1rem;
       font-size: 0.8em;
       color: #ccc;
+      background-color: rgba(0, 0, 0, 0.5);
     }
   </style>
 </head>
@@ -105,15 +107,15 @@
       <div class="card-body">
         <div class="card-title">Mandelbrot Set Explorer</div>
         <div class="card-description">
-          Explore the Mandelbrot set in real-time with dynamic zoom and palette animation. The explorer also visualises either the Julia set or an altered Mandelbrot set, where <code>z<sub>0</sub></code> is chosen based on your selected position.
+          Explore the Mandelbrot set in real-time with dynamic zoom and palette animation. The explorer also visualises either the Julia set or an altered Mandelbrot set, where <code>z<sub>0</sub></code> is chosen based on your selected position.<br><br>
+          Based on <a href="https://mandel.gart.nz/" style="color: #80dfff; text-decoration: underline;">mandel.gart.nz</a> with modifications.
         </div>
         <a href="/mandelbrot/">Launch Project</a>
       </div>
     </div>
 
-    <!-- Placeholder for future projects -->
     <div class="card">
-      <img src="https://via.placeholder.com/640x180/334/eee?text=Coming+Soon" alt="Placeholder">
+      <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/99/Visualisation_of_finite_automaton.gif/600px-Visualisation_of_finite_automaton.gif" alt="Future Project">
       <div class="card-body">
         <div class="card-title">More Projects Coming Soon</div>
         <div class="card-description">
