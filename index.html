@@ -2,98 +2,132 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>My Projects</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ches.uk Projects</title>
   <style>
     body {
       margin: 0;
       font-family: Arial, sans-serif;
-      background-image: url('landing_background.png');
+      color: #f0f0f0;
+      background: url('landing_background.png') no-repeat center center fixed;
       background-size: cover;
-      background-attachment: fixed;
-      background-position: center;
-      color: #ffffff;
     }
-    .overlay {
-      background-color: rgba(0, 0, 0, 0.75);
-      padding: 40px;
-      min-height: 100vh;
-    }
+
     header {
       text-align: center;
-      margin-bottom: 40px;
+      padding: 3rem 1rem 1rem;
+      background-color: rgba(0, 0, 0, 0.5);
     }
-    h1 {
-      font-size: 3em;
-      margin-bottom: 0.2em;
+
+    header h1 {
+      font-size: 2.5em;
+      margin-bottom: 0.5rem;
     }
-    p {
-      font-size: 1.2em;
+
+    header p {
+      font-size: 1.1em;
+      max-width: 600px;
+      margin: auto;
     }
+
     .projects {
       display: flex;
       flex-wrap: wrap;
-      gap: 40px;
       justify-content: center;
+      padding: 2rem;
+      gap: 2rem;
     }
+
     .card {
-      background-color: #222;
-      border-radius: 10px;
-      width: 350px;
-      padding: 20px;
-      box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+      background: rgba(30, 42, 56, 0.95);
+      border-radius: 12px;
+      overflow: hidden;
+      width: 320px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      transition: transform 0.2s;
     }
+
+    .card:hover {
+      transform: scale(1.03);
+    }
+
     .card img {
       width: 100%;
-      border-radius: 10px;
+      height: 180px;
+      object-fit: cover;
     }
-    .card h2 {
-      margin-top: 15px;
-      font-size: 1.5em;
+
+    .card-body {
+      padding: 1rem;
     }
-    .card p {
-      font-size: 1em;
-      line-height: 1.4;
+
+    .card-title {
+      font-size: 1.3em;
+      margin-bottom: 0.5rem;
     }
+
+    .card-description {
+      font-size: 0.95em;
+      line-height: 1.5;
+    }
+
     .card a {
       display: inline-block;
-      margin-top: 10px;
-      padding: 10px 15px;
-      background-color: #0af;
+      margin-top: 1rem;
+      padding: 0.5rem 1rem;
+      background: #4caf50;
       color: white;
       text-decoration: none;
-      border-radius: 5px;
+      border-radius: 6px;
+      transition: background 0.3s;
     }
+
     .card a:hover {
-      background-color: #08c;
+      background: #45a049;
+    }
+
+    footer {
+      text-align: center;
+      padding: 1rem;
+      font-size: 0.8em;
+      color: #ccc;
+      background-color: rgba(0, 0, 0, 0.5);
     }
   </style>
 </head>
 <body>
-  <div class="overlay">
-    <header>
-      <h1>Welcome to My Projects</h1>
-      <p>Explore a collection of tools and ideas in mathematics, statistics, philosophy, and Jewish thought.</p>
-    </header>
+  <header>
+    <h1>ches.uk</h1>
+    <p>Welcome to my personal project hub. Below you'll find interactive visualisations, experiments, and tools I've built.</p>
+  </header>
 
-    <section class="projects">
-      <div class="card">
-        <img src="mandelbrot-thumb.png" alt="Mandelbrot Set">
-        <h2>Mandelbrot Set Explorer</h2>
-        <p>
-          Explore the Mandelbrot Set with dynamic zoom and the ability to display either the corresponding Julia set or an alternative Mandelbrot set based on your chosen <i>z₀</i>. Based on <a href="https://mandel.gart.nz" target="_blank" style="color:#0af;">mandel.gart.nz</a>.
-        </p>
-        <a href="explorer.html">Open Explorer</a>
+  <section class="projects">
+    <div class="card">
+      <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/21/Mandel_zoom_00_mandelbrot_set.jpg/640px-Mandel_zoom_00_mandelbrot_set.jpg" alt="Mandelbrot Explorer Thumbnail">
+      <div class="card-body">
+        <div class="card-title">Mandelbrot Set Explorer</div>
+        <div class="card-description">
+          Explore the Mandelbrot set in real-time with dynamic zoom and palette animation. The explorer also visualises either the Julia set or an altered Mandelbrot set, where <code>z<sub>0</sub></code> is chosen based on your selected position.<br><br>
+          Based on <a href="https://mandel.gart.nz/" style="color: #80dfff; text-decoration: underline;">mandel.gart.nz</a> with modifications.
+        </div>
+        <a href="/mandelbrot/">Launch Project</a>
       </div>
+    </div>
 
-      <div class="card">
-        <img src="coming-soon.png" alt="Coming Soon">
-        <h2>More Projects Coming Soon</h2>
-        <p>
-          Additional interactive tools, visualizations, and thought experiments are currently in development. Stay tuned!
-        </p>
+    <div class="card">
+      <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/99/Visualisation_of_finite_automaton.gif/600px-Visualisation_of_finite_automaton.gif" alt="Future Project">
+      <div class="card-body">
+        <div class="card-title">More Projects Coming Soon</div>
+        <div class="card-description">
+          This is just the beginning. Check back for more visual tools, experiments, and explorations into maths, computation, and interactivity.
+        </div>
+        <a href="#">Stay Tuned</a>
       </div>
-    </section>
-  </div>
+    </div>
+  </section>
+
+  <footer>
+    &copy; 2025 ches.uk. All rights reserved.
+  </footer>
 </body>
 </html>
