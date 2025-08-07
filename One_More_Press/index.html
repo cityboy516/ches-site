@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Button Game – Devnet Test</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="container">
+    <h1>Button Game (Devnet)</h1>
+
+    <div id="config">
+      <h3>Config</h3>
+      <label>Program ID: <input id="programId" type="text" /></label><br/>
+      <label>Active Pot Account: <input id="activePot" type="text" /></label><br/>
+      <label>Local Seed Account: <input id="localSeed" type="text" /></label><br/>
+      <label>Global Seed Account: <input id="globalSeed" type="text" /></label><br/>
+      <button id="saveConfig">Save Config</button>
+    </div>
+
+    <div class="game-info">
+      <p>Current Pot: <span id="pot">$0.00</span></p>
+      <p>Local Seed: <span id="local-seed">$0.00</span></p>
+      <p>Global Seed: <span id="global-seed">$0.00</span></p>
+      <p>Timer: <span id="timer">60</span> seconds</p>
+      <p>Last Presser: <span id="last-presser">None</span></p>
+    </div>
+
+    <button id="connect">Connect Wallet</button>
+    <button id="press" disabled>Press for $0.12</button>
+    <button id="finalize" disabled>Finalize</button>
+
+    <script src="app.js"></script>
+  </div>
+</body>
+</html>
