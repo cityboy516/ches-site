@@ -1,0 +1,30 @@
+body {
+  background-color: #f9f9f9;
+  font-family: Arial, sans-serif;
+  color: #333;
+  text-align: center;
+  margin: 0;
+  padding: 0;
+}
+.container {
+  padding: 20px;
+  max-width: 500px;
+  margin: auto;
+}
+button {
+  background-color: #00bcd4; /* bright cyan highlight */
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  margin: 10px;
+  cursor: pointer;
+  border-radius: 5px;
+  font-size: 16px;
+}
+button:disabled {
+  background-color: #aaa;
+  cursor: not-allowed;
+}
+.game-info {
+  margin-bottom: 20px;
+}
