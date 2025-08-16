@@ -607,5 +607,97 @@ gapInput.oninput=()=>{ GAP=parseFloat(gapInput.value)||0.04; buildStickers(); };
   setToast('Ready. Drag to orbit, mouse wheel or +/- to zoom. Pinch to zoom on touch devices.');
 })();
 </script>
+<script>
+// --- Zoom UI + robustness patch ---
+(function(){
+  var canvas = document.getElementById('view');
+  if (!canvas) return;
+  canvas.style.touchAction = 'none';
+
+  // Inject Zoom controls UI if not present
+  var sections = Array.from(document.querySelectorAll('.section'));
+  var controlsSection = sections.find(function(sec){
+    var h = sec.querySelector('h2');
+    return h && h.textContent.trim().toLowerCase() === 'controls';
+  });
+  if (controlsSection && !document.getElementById('zoomSlider')){
+    var row = document.createElement('div');
+    row.className = 'row';
+    row.innerHTML = '<label>Zoom</label><div class="btn-row">\
+      <button id="zoomOutBtn">–</button>\
+      <input id="zoomSlider" type="range" min="1.8" max="30" step="0.05" value="5.2" />\
+      <button id="zoomInBtn">+</button>\
+      <button id="fitBtn">Fit</button>\
+      <button id="resetViewBtn">Reset View</button>\
+    </div>';
+    controlsSection.appendChild(row);
+  }
+
+  var zoomSlider = document.getElementById('zoomSlider');
+  var zoomInBtn = document.getElementById('zoomInBtn');
+  var zoomOutBtn = document.getElementById('zoomOutBtn');
+  var fitBtn = document.getElementById('fitBtn');
+  var resetViewBtn = document.getElementById('resetViewBtn');
+  var ZMIN = 1.8, ZMAX = 30;
+  function setDist(d){
+    if(!window.camera) return;
+    window.camera.dist = Math.max(ZMIN, Math.min(ZMAX, d));
+    if(zoomSlider) zoomSlider.value = String(window.camera.dist);
+  }
+  function fitView(){
+    var r = Math.sqrt(3); // bounding sphere radius of unit cube
+    var fov = Math.PI*55/180;
+    var dist = r/Math.tan(fov/2) + 0.6; // margin
+    setDist(dist);
+  }
+  if(zoomSlider) zoomSlider.addEventListener('input', function(){ setDist(parseFloat(this.value)); });
+  if(zoomInBtn) zoomInBtn.addEventListener('click', function(){ setDist(window.camera.dist - 0.6); });
+  if(zoomOutBtn) zoomOutBtn.addEventListener('click', function(){ setDist(window.camera.dist + 0.6); });
+  if(fitBtn) fitBtn.addEventListener('click', fitView);
+  if(resetViewBtn) resetViewBtn.addEventListener('click', function(){ if(!window.camera) return; window.camera.rotX = Math.PI*30/180; window.camera.rotY = Math.PI*35/180; fitView(); });
+  if(zoomSlider && window.camera) zoomSlider.value = String(window.camera.dist);
+
+  // Wheel on canvas with ctrlKey acceleration (Windows precision touchpad pinch)
+  canvas.addEventListener('wheel', function(e){
+    var accel = e.ctrlKey ? 0.02 : 0.0015;
+    setDist((window.camera ? window.camera.dist : 5.2) + e.deltaY * accel);
+  }, {passive:true});
+
+  // Safari pinch gestures (non‑standard)
+  window.addEventListener('gesturechange', function(e){
+    setDist((window.camera ? window.camera.dist : 5.2) * (1 + (1 - e.scale)*0.25));
+    e.preventDefault();
+  }, {passive:false});
+
+  // Touch pinch (phones/tablets)
+  var lastTouchDist = null;
+  canvas.addEventListener('touchstart', function(e){
+    if(e.touches.length===2){
+      var dx = e.touches[0].clientX - e.touches[1].clientX;
+      var dy = e.touches[0].clientY - e.touches[1].clientY;
+      lastTouchDist = Math.hypot(dx,dy);
+    }
+  }, {passive:true});
+  canvas.addEventListener('touchmove', function(e){
+    if(e.touches.length===2){
+      var dx = e.touches[0].clientX - e.touches[1].clientX;
+      var dy = e.touches[0].clientY - e.touches[1].clientY;
+      var d = Math.hypot(dx,dy);
+      if(lastTouchDist){ setDist((window.camera ? window.camera.dist : 5.2) + (lastTouchDist - d)*0.005); }
+      lastTouchDist = d;
+    }
+  }, {passive:true});
+  canvas.addEventListener('touchend', function(){ lastTouchDist=null; }, {passive:true});
+
+  // Extra keyboard support for numpad +/-
+  window.addEventListener('keydown', function(e){
+    if(e.key==='+' || e.key==='=' || e.code==='NumpadAdd') setDist((window.camera ? window.camera.dist : 5.2) - 0.3);
+    if(e.key==='-' || e.key==='_' || e.code==='NumpadSubtract') setDist((window.camera ? window.camera.dist : 5.2) + 0.3);
+  });
+
+  // Ensure initial fit
+  if (window.camera) fitView();
+})();
+</script>
 </body>
 </html>
