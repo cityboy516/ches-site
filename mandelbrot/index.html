@@ -139,8 +139,8 @@
 </div>
 <br/>
 <div style="display: inline-block; float:left; background: #cef; border: 1px solid gray; padding: 2px; margin: 10px; ">
-<div style="border: 1px solid gray; padding: 5px;"><span><b>Max iterations:   </b></span> <input id="iterSlider" max="1500" min="1" type="range" value="286"/>
-<input id="itersInput" max="1500" min="1" onchange="changeIters();" style="width: 4em;" type="number" value="286"/>   
+<div style="border: 1px solid gray; padding: 5px;"><span><b>Max iterations:   </b></span> <input id="iterSlider" max="5000" min="1" type="range" value="286"/>
+<input id="itersInput" max="5000" min="1" onchange="changeIters();" style="width: 4em;" type="number" value="286"/>   
 		<input id="showAxes" onclick="toggleAxes();" style="float:right;" type="checkbox"/>
 <span style="float:right;"><label for="showAxes">Axes</label></span>
 </div>
@@ -246,6 +246,7 @@ document.addEventListener("DOMContentLoaded", function () {
 <br/>
 <!-- div style="position: fixed; bottom: 0; width: 100%; margin: 0px; padding: 0px;">
 </div -->
+<script src="decimal.min.js"></script>
 <script src="mandel-workers.js"></script>
 </body>
 </html>
