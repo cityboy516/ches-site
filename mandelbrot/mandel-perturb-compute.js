@@ -1,9 +1,49 @@
 // mandel-perturb-compute.js
 // Perturbation theory Mandelbrot worker.
-// Reference orbit (Phase A) computed using Decimal.js — arbitrary precision.
-// Per-pixel iterations (Phase B) use standard doubles on small deltas — fast, always accurate.
+// Phase A uses double-double arithmetic at zoom < 1e30 (~30 digits, fast).
+// Phase A uses Decimal.js at zoom >= 1e30 (arbitrary precision, slower but only runs once per frame).
+// Phase B (per-pixel deltas) always uses standard doubles — fast at any zoom depth.
 
 importScripts('decimal.min.js');
+
+// ── double-double arithmetic ──────────────────────────────────────────────────
+// A double-double number is stored as [hi, lo] where the true value is hi + lo
+// and |lo| <= ulp(hi)/2. This gives ~30 decimal digits of precision.
+
+function twoSum(a, b) {
+    var s = a + b, v = s - a;
+    return [s, (a - (s - v)) + (b - v)];
+}
+
+function split(a) {
+    var t = 134217729.0 * a; // 2^27 + 1
+    var hi = t - (t - a);
+    return [hi, a - hi];
+}
+
+function twoProd(a, b) {
+    var p = a * b;
+    var sa = split(a), sb = split(b);
+    return [p, ((sa[0]*sb[0] - p) + sa[0]*sb[1] + sa[1]*sb[0]) + sa[1]*sb[1]];
+}
+
+function ddAdd(ahi, alo, bhi, blo) {
+    var s = twoSum(ahi, bhi);
+    return twoSum(s[0], s[1] + alo + blo);
+}
+
+function ddSub(ahi, alo, bhi, blo) {
+    return ddAdd(ahi, alo, -bhi, -blo);
+}
+
+function ddMul(ahi, alo, bhi, blo) {
+    var p = twoProd(ahi, bhi);
+    return twoSum(p[0], p[1] + ahi*blo + alo*bhi);
+}
+
+// Zoom threshold above which double-double (~30 digits) loses accuracy.
+// Below this, double-double Phase A is used (fast). Above, Decimal.js takes over.
+var DD_LIMIT = 1e30;
 
 // ── worker message handler ────────────────────────────────────────────────────
 self.onmessage = function(e) {
@@ -17,7 +57,7 @@ self.onmessage = function(e) {
     var blockSize   = e.data.blockSize;
     var canvasWidth = e.data.canvasWidth;
     var segHeight   = e.data.segmentHeight;
-    var cx_ref      = e.data.cx_center;   // math coord of screen centre (double, for fallback)
+    var cx_ref      = e.data.cx_center;   // math coord of screen centre (double)
     var cy_ref      = e.data.cy_center;
     var lblockSize  = blockSize == 1 ? 1 : blockSize / 2;
 
@@ -28,45 +68,71 @@ self.onmessage = function(e) {
     var firstIter = smooth == 1 ? -3 : -1;
     var log2val  = 1.0; // Math.log2(2) == 1
 
-    // cxhi/cyhi (doubles) are still used in Phase B for the inside-check bounding box
+    // cxhi/cyhi (doubles) used in Phase B for the inside-check bounding box
     var cxhi = (e.data.cxhi !== undefined) ? e.data.cxhi : cx_ref;
     var cxlo = (e.data.cxlo !== undefined) ? e.data.cxlo : 0.0;
     var cyhi = (e.data.cyhi !== undefined) ? e.data.cyhi : cy_ref;
     var cylo = (e.data.cylo !== undefined) ? e.data.cylo : 0.0;
-
-    // ── Phase A: reference orbit using Decimal.js arithmetic ─────────────────
-    // One orbit at the screen centre — computed once per frame.
-    // Decimal gives arbitrary precision; only this phase is slow.
-    // Phase B (per-pixel deltas) is standard doubles — completely unchanged.
-    var needed_prec = Math.max(40, Math.ceil(Math.log10(zoom)) + 10);
-    Decimal.set({ precision: needed_prec, rounding: 4 });
-
-    // Use high-precision decimal string from main thread; fall back to double if absent
-    var cx_dec_str = (e.data.cx_dec_str !== undefined) ? e.data.cx_dec_str : String(cxhi);
-    var cy_dec_str = (e.data.cy_dec_str !== undefined) ? e.data.cy_dec_str : String(cyhi);
-    var cx_D = new Decimal(cx_dec_str);
-    var cy_D = new Decimal(cy_dec_str);
-    var Zr_D = new Decimal(0);
-    var Zi_D = new Decimal(0);
-    var TWO  = new Decimal(2);
 
     // Array sized iter_max+2 so refZr[n+1] is always safe to read inside Phase B loop
     var refZr = new Float64Array(iter_max + 2);
     var refZi = new Float64Array(iter_max + 2);
     var refLen = 0;
 
-    for (var n = 0; n < iter_max; n++) {
-        refZr[n] = Zr_D.toNumber();
-        refZi[n] = Zi_D.toNumber();
-        refLen = n + 1;
+    if (zoom < DD_LIMIT) {
+        // ── Phase A: reference orbit in double-double (zoom < 1e30) ──────────
+        // Fast native float64 operations, ~30 digits of precision.
+        var Zrhi = 0.0, Zrlo = 0.0;
+        var Zihi = 0.0, Zilo = 0.0;
 
-        if (Zr_D.times(Zr_D).plus(Zi_D.times(Zi_D)).gt(escSq)) break;
+        for (var n = 0; n < iter_max; n++) {
+            refZr[n] = Zrhi;
+            refZi[n] = Zihi;
+            refLen = n + 1;
 
-        // Z_{n+1} = Z_n^2 + c  in Decimal arithmetic
-        var newZr_D = Zr_D.times(Zr_D).minus(Zi_D.times(Zi_D)).plus(cx_D);
-        var newZi_D = Zr_D.times(Zi_D).times(TWO).plus(cy_D);
-        Zr_D = newZr_D;
-        Zi_D = newZi_D;
+            if (Zrhi*Zrhi + Zihi*Zihi > escSq) break;
+
+            // Z_{n+1} = Z_n^2 + c  in double-double
+            var Zr2     = ddMul(Zrhi, Zrlo, Zrhi, Zrlo);
+            var Zi2     = ddMul(Zihi, Zilo, Zihi, Zilo);
+            var Zr2mZi2 = ddSub(Zr2[0], Zr2[1], Zi2[0], Zi2[1]);
+            var ZrZi    = ddMul(Zrhi, Zrlo, Zihi, Zilo);
+            // 2*Zr*Zi: multiplying by 2 is exact for the hi part
+            var newZr   = ddAdd(Zr2mZi2[0], Zr2mZi2[1], cxhi, cxlo);
+            var newZi   = ddAdd(ZrZi[0]*2.0, ZrZi[1]*2.0, cyhi, cylo);
+
+            Zrhi = newZr[0]; Zrlo = newZr[1];
+            Zihi = newZi[0]; Zilo = newZi[1];
+        }
+    } else {
+        // ── Phase A: reference orbit using Decimal.js (zoom >= 1e30) ─────────
+        // Arbitrary precision — slower but only computed once per frame.
+        // Precision scales with zoom depth.
+        var needed_prec = Math.max(40, Math.ceil(Math.log10(zoom)) + 10);
+        Decimal.set({ precision: needed_prec, rounding: 4 });
+
+        // Use high-precision decimal string from main thread; fall back to double if absent
+        var cx_dec_str = (e.data.cx_dec_str !== undefined) ? e.data.cx_dec_str : String(cxhi);
+        var cy_dec_str = (e.data.cy_dec_str !== undefined) ? e.data.cy_dec_str : String(cyhi);
+        var cx_D = new Decimal(cx_dec_str);
+        var cy_D = new Decimal(cy_dec_str);
+        var Zr_D = new Decimal(0);
+        var Zi_D = new Decimal(0);
+        var TWO  = new Decimal(2);
+
+        for (var n = 0; n < iter_max; n++) {
+            refZr[n] = Zr_D.toNumber();
+            refZi[n] = Zi_D.toNumber();
+            refLen = n + 1;
+
+            if (Zr_D.times(Zr_D).plus(Zi_D.times(Zi_D)).gt(escSq)) break;
+
+            // Z_{n+1} = Z_n^2 + c  in Decimal arithmetic
+            var newZr_D = Zr_D.times(Zr_D).minus(Zi_D.times(Zi_D)).plus(cx_D);
+            var newZi_D = Zr_D.times(Zi_D).times(TWO).plus(cy_D);
+            Zr_D = newZr_D;
+            Zi_D = newZi_D;
+        }
     }
 
     // Reference pixel position (where delta = 0).
