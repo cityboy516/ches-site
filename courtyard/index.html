@@ -140,14 +140,14 @@ function touching(x, y, w, h, val) {
   return null;
 }
 
-function update() {
+function update(dt) {
   if (player.won) return;
 
   let dx = 0, dy = 0;
-  if (keys['ArrowLeft'])  { dx = -player.speed; player.facing = 'left'; }
-  if (keys['ArrowRight']) { dx =  player.speed; player.facing = 'right'; }
-  if (keys['ArrowUp'])    { dy = -player.speed; player.facing = 'up'; }
-  if (keys['ArrowDown'])  { dy =  player.speed; player.facing = 'down'; }
+  if (keys['ArrowLeft'])  { dx = -player.speed * dt; player.facing = 'left'; }
+  if (keys['ArrowRight']) { dx =  player.speed * dt; player.facing = 'right'; }
+  if (keys['ArrowUp'])    { dy = -player.speed * dt; player.facing = 'up'; }
+  if (keys['ArrowDown'])  { dy =  player.speed * dt; player.facing = 'down'; }
 
   const nx = player.x + dx;
   if (!hitsWall(nx, player.y, player.w, player.h)) player.x = nx;
@@ -308,9 +308,14 @@ bindBtn('btn-down',  'ArrowDown');
 bindBtn('btn-left',  'ArrowLeft');
 bindBtn('btn-right', 'ArrowRight');
 
-function loop() {
+let lastTime = 0;
+function loop(timestamp) {
+  // dt: how many 60fps-frames worth of time passed (1.0 = perfect 60fps, 2.0 = 30fps, etc.)
+  // Capped at 3 to prevent teleporting through walls if the tab was backgrounded
+  const dt = lastTime ? Math.min((timestamp - lastTime) / (1000 / 60), 3) : 1;
+  lastTime = timestamp;
   tick++;
-  update();
+  update(dt);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   drawMap();
   drawPlayer();
