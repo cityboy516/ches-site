@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Level 1 — The Courtyard</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -19,11 +19,42 @@
   #hud b { color: #f0b429; }
   #statusMsg { color: #aaa; }
   #statusMsg.unlocked { color: #2ecc71; }
-  canvas { border: 2px solid #2a2a4a; display: block; max-width: 100%; }
-  #hint { font-size: 12px; color: #444; margin-bottom: 10px; }
-  #back { font-size: 12px; color: #444; margin-top: 4px; }
+  canvas { border: 2px solid #2a2a4a; display: block; }
+  #hint { font-size: 12px; color: #444; }
+  #back { font-size: 12px; color: #444; margin-bottom: 10px; }
   #back a { color: #555; text-decoration: none; }
   #back a:hover { color: #888; }
+
+  /* D-pad */
+  #dpad {
+    display: grid;
+    grid-template-columns: repeat(3, 64px);
+    grid-template-rows: repeat(3, 64px);
+    gap: 6px;
+    margin: 6px 0;
+  }
+  #btn-up    { grid-column: 2; grid-row: 1; }
+  #btn-left  { grid-column: 1; grid-row: 2; }
+  #btn-right { grid-column: 3; grid-row: 2; }
+  #btn-down  { grid-column: 2; grid-row: 3; }
+  #dpad button {
+    width: 64px; height: 64px;
+    background: rgba(255,255,255,0.06);
+    border: 2px solid #2e2e50;
+    border-radius: 12px;
+    color: #666;
+    font-size: 22px;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+    transition: background 0.08s, border-color 0.08s, color 0.08s;
+  }
+  #dpad button.pressed {
+    background: rgba(240,180,41,0.18);
+    border-color: #f0b429;
+    color: #f0b429;
+  }
 </style>
 </head>
 <body>
@@ -33,7 +64,13 @@
   <span id="statusMsg">Find all 5 coins to unlock the exit</span>
 </div>
 <canvas id="c" width="800" height="600" tabindex="0"></canvas>
-<div id="hint">Arrow keys to move</div>
+<div id="hint">Arrow keys · or use the buttons below on mobile</div>
+<div id="dpad">
+  <button id="btn-up">▲</button>
+  <button id="btn-left">◀</button>
+  <button id="btn-right">▶</button>
+  <button id="btn-down">▼</button>
+</div>
 <div id="back"><a href="/">← ches.uk</a></div>
 
 <script>
@@ -243,6 +280,33 @@ function drawWin() {
   ctx.font = '14px Courier New';
   ctx.fillText('Refresh to play again', canvas.width / 2, canvas.height / 2 + 58);
 }
+
+// Scale canvas to fit smaller screens while keeping internal resolution
+function scaleCanvas() {
+  const maxW = Math.min(800, window.innerWidth - 8);
+  const scale = maxW / 800;
+  canvas.style.width  = Math.round(800 * scale) + 'px';
+  canvas.style.height = Math.round(600 * scale) + 'px';
+}
+window.addEventListener('resize', scaleCanvas);
+scaleCanvas();
+
+// D-pad touch + click controls
+function bindBtn(id, key) {
+  const btn = document.getElementById(id);
+  const press   = e => { e.preventDefault(); keys[key] = true;  btn.classList.add('pressed'); };
+  const release = e => { e.preventDefault(); delete keys[key]; btn.classList.remove('pressed'); };
+  btn.addEventListener('touchstart',  press,   { passive: false });
+  btn.addEventListener('touchend',    release, { passive: false });
+  btn.addEventListener('touchcancel', release, { passive: false });
+  btn.addEventListener('mousedown',   press);
+  btn.addEventListener('mouseup',     release);
+  btn.addEventListener('mouseleave',  release);
+}
+bindBtn('btn-up',    'ArrowUp');
+bindBtn('btn-down',  'ArrowDown');
+bindBtn('btn-left',  'ArrowLeft');
+bindBtn('btn-right', 'ArrowRight');
 
 function loop() {
   tick++;
