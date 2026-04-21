@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<title>Level 1 — The Courtyard</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0f0f1a;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    min-height: 100vh;
+    font-family: 'Courier New', monospace;
+    color: #ccc; gap: 10px;
+  }
+  h1 { color: #f0b429; font-size: 20px; letter-spacing: 3px; margin-top: 12px; }
+  #hud { display: flex; gap: 32px; font-size: 15px; }
+  #hud b { color: #f0b429; }
+  #statusMsg { color: #aaa; }
+  #statusMsg.unlocked { color: #2ecc71; }
+  canvas { border: 2px solid #2a2a4a; display: block; max-width: 100%; }
+  #hint { font-size: 12px; color: #444; margin-bottom: 10px; }
+  #back { font-size: 12px; color: #444; margin-top: 4px; }
+  #back a { color: #555; text-decoration: none; }
+  #back a:hover { color: #888; }
+</style>
+</head>
+<body>
+<h1>LEVEL 1 — THE COURTYARD</h1>
+<div id="hud">
+  <span>Coins: <b id="coinCount">0</b> / 5</span>
+  <span id="statusMsg">Find all 5 coins to unlock the exit</span>
+</div>
+<canvas id="c" width="800" height="600" tabindex="0"></canvas>
+<div id="hint">Arrow keys to move</div>
+<div id="back"><a href="/">← ches.uk</a></div>
+
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+canvas.focus();
+
+// 0=floor  1=wall  2=coin  3=exit(locked)  4=exit(open)
+const map = [
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+  [1,0,0,0,0,2,0,0,0,0,0,0,0,0,0,2,0,0,0,1],
+  [1,0,0,1,1,1,1,0,0,1,1,1,1,0,0,1,1,0,0,1],
+  [1,0,0,1,0,0,0,0,0,0,0,0,1,0,0,1,0,0,0,1],
+  [1,0,0,1,0,1,1,1,1,1,1,0,1,0,0,0,0,0,0,1],
+  [1,0,0,0,0,1,0,0,2,0,1,0,1,0,1,1,1,1,0,1],
+  [1,0,1,1,0,1,0,1,1,0,1,0,0,0,1,0,0,1,0,1],
+  [1,0,0,1,0,1,0,1,0,0,1,0,1,0,1,0,0,1,0,1],
+  [1,0,0,1,0,0,0,0,0,2,0,0,1,0,0,0,0,0,0,1],
+  [1,0,0,0,0,1,1,1,1,1,1,0,1,0,1,1,1,1,0,1],
+  [1,0,1,1,0,0,0,0,0,0,1,0,1,0,0,0,0,1,0,1],
+  [1,0,0,1,0,1,1,1,1,0,0,0,0,0,1,1,0,0,0,1],
+  [1,0,0,0,0,0,0,0,1,2,1,1,1,0,0,0,0,1,0,1],
+  [1,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,3,1],
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+];
+
+const T = 40, ROWS = map.length, COLS = map[0].length, TOTAL_COINS = 5;
+
+const player = {
+  x: T + 6, y: T + 6,
+  w: 28, h: 28,
+  speed: 3,
+  facing: 'right',
+  coins: 0,
+  won: false,
+};
+
+const keys = {};
+window.addEventListener('keydown', e => {
+  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) e.preventDefault();
+  keys[e.key] = true;
+});
+window.addEventListener('keyup', e => { delete keys[e.key]; });
+
+function tile(r, c) {
+  if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return 1;
+  return map[r][c];
+}
+
+function hitsWall(x, y, w, h) {
+  const r0 = Math.floor(y / T),         r1 = Math.floor((y + h - 1) / T);
+  const c0 = Math.floor(x / T),         c1 = Math.floor((x + w - 1) / T);
+  for (let r = r0; r <= r1; r++)
+    for (let c = c0; c <= c1; c++) {
+      const t = tile(r, c);
+      if (t === 1 || t === 3) return true;
+    }
+  return false;
+}
+
+function touching(x, y, w, h, val) {
+  const r0 = Math.floor(y / T),         r1 = Math.floor((y + h - 1) / T);
+  const c0 = Math.floor(x / T),         c1 = Math.floor((x + w - 1) / T);
+  for (let r = r0; r <= r1; r++)
+    for (let c = c0; c <= c1; c++)
+      if (tile(r, c) === val) return {r, c};
+  return null;
+}
+
+function update() {
+  if (player.won) return;
+
+  let dx = 0, dy = 0;
+  if (keys['ArrowLeft'])  { dx = -player.speed; player.facing = 'left'; }
+  if (keys['ArrowRight']) { dx =  player.speed; player.facing = 'right'; }
+  if (keys['ArrowUp'])    { dy = -player.speed; player.facing = 'up'; }
+  if (keys['ArrowDown'])  { dy =  player.speed; player.facing = 'down'; }
+
+  const nx = player.x + dx;
+  if (!hitsWall(nx, player.y, player.w, player.h)) player.x = nx;
+  const ny = player.y + dy;
+  if (!hitsWall(player.x, ny, player.w, player.h)) player.y = ny;
+
+  const coin = touching(player.x, player.y, player.w, player.h, 2);
+  if (coin) {
+    map[coin.r][coin.c] = 0;
+    player.coins++;
+    document.getElementById('coinCount').textContent = player.coins;
+    if (player.coins >= TOTAL_COINS) {
+      for (let r = 0; r < ROWS; r++)
+        for (let c = 0; c < COLS; c++)
+          if (map[r][c] === 3) map[r][c] = 4;
+      const el = document.getElementById('statusMsg');
+      el.textContent = '✓ Exit unlocked — reach the door!';
+      el.classList.add('unlocked');
+    }
+  }
+
+  if (touching(player.x, player.y, player.w, player.h, 4)) {
+    player.won = true;
+  }
+}
+
+let tick = 0;
+
+function roundRect(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);   ctx.arcTo(x + w, y,     x + w, y + r,     r);
+  ctx.lineTo(x + w, y + h - r); ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+  ctx.lineTo(x + r, y + h);   ctx.arcTo(x,     y + h, x,     y + h - r, r);
+  ctx.lineTo(x, y + r);       ctx.arcTo(x,     y,     x + r, y,         r);
+  ctx.closePath();
+}
+
+function drawMap() {
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const x = c * T, y = r * T, t = map[r][c];
+
+      if (t === 1) {
+        ctx.fillStyle = '#252545'; ctx.fillRect(x, y, T, T);
+        ctx.fillStyle = '#363668'; ctx.fillRect(x + 2, y + 2, T - 4, T - 9);
+        ctx.fillStyle = '#1a1a30'; ctx.fillRect(x, y + T - 7, T, 7);
+      } else {
+        ctx.fillStyle = '#16162a'; ctx.fillRect(x, y, T, T);
+        ctx.strokeStyle = '#1e1e38'; ctx.lineWidth = 0.5; ctx.strokeRect(x, y, T, T);
+
+        if (t === 2) {
+          const scale = 1 + 0.18 * Math.sin(tick * 0.07 + c * 0.9 + r * 0.7);
+          ctx.save();
+          ctx.translate(x + T / 2, y + T / 2);
+          ctx.shadowColor = '#f0b429'; ctx.shadowBlur = 12;
+          ctx.fillStyle = '#f0b429';
+          ctx.beginPath(); ctx.arc(0, 0, 7 * scale, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#ffe066';
+          ctx.beginPath(); ctx.arc(-2, -2, 2.5 * scale, 0, Math.PI * 2); ctx.fill();
+          ctx.shadowBlur = 0;
+          ctx.restore();
+
+        } else if (t === 3) {
+          ctx.fillStyle = '#5a0a0a'; ctx.fillRect(x + 4, y + 4, T - 8, T - 8);
+          ctx.strokeStyle = '#c0392b'; ctx.lineWidth = 2; ctx.strokeRect(x + 4, y + 4, T - 8, T - 8);
+          ctx.fillStyle = '#ff6b6b'; ctx.font = 'bold 11px Courier New';
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText('LOCKED', x + T / 2, y + T / 2);
+
+        } else if (t === 4) {
+          const glow = 0.5 + 0.5 * Math.sin(tick * 0.05);
+          ctx.shadowColor = '#2ecc71'; ctx.shadowBlur = 20 * glow;
+          ctx.fillStyle = `rgba(39,174,96,${0.55 + 0.3 * glow})`;
+          ctx.fillRect(x + 4, y + 4, T - 8, T - 8);
+          ctx.strokeStyle = '#2ecc71'; ctx.lineWidth = 2;
+          ctx.strokeRect(x + 4, y + 4, T - 8, T - 8);
+          ctx.fillStyle = '#afffcf'; ctx.font = 'bold 11px Courier New';
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText('EXIT', x + T / 2, y + T / 2);
+          ctx.shadowBlur = 0;
+        }
+      }
+    }
+  }
+}
+
+function drawPlayer() {
+  const { x, y, w, h, facing } = player;
+
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.beginPath();
+  ctx.ellipse(x + w / 2 + 2, y + h + 3, w / 2 - 2, 4, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  roundRect(x, y, w, h, 5);
+  ctx.fillStyle = '#e74c3c'; ctx.fill();
+  ctx.strokeStyle = '#c0392b'; ctx.lineWidth = 2; ctx.stroke();
+
+  roundRect(x + 3, y + 2, w - 6, 8, 3);
+  ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.fill();
+
+  const eyePos = {
+    right: [x + w - 10, y + h / 2 - 3],
+    left:  [x + 4,      y + h / 2 - 3],
+    up:    [x + w / 2 - 3, y + 4],
+    down:  [x + w / 2 - 3, y + h - 10],
+  };
+  const [ex, ey] = eyePos[facing];
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.arc(ex + 3, ey + 3, 4, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#1a1a1a';
+  ctx.beginPath(); ctx.arc(ex + 3, ey + 3, 2, 0, Math.PI * 2); ctx.fill();
+}
+
+function drawWin() {
+  ctx.fillStyle = 'rgba(0,0,0,0.72)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+
+  ctx.fillStyle = '#f0b429';
+  ctx.font = 'bold 50px Courier New';
+  ctx.fillText('LEVEL COMPLETE!', canvas.width / 2, canvas.height / 2 - 28);
+
+  ctx.fillStyle = '#aaa';
+  ctx.font = '20px Courier New';
+  ctx.fillText('You escaped the courtyard.', canvas.width / 2, canvas.height / 2 + 20);
+
+  ctx.fillStyle = '#555';
+  ctx.font = '14px Courier New';
+  ctx.fillText('Refresh to play again', canvas.width / 2, canvas.height / 2 + 58);
+}
+
+function loop() {
+  tick++;
+  update();
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawMap();
+  drawPlayer();
+  if (player.won) drawWin();
+  requestAnimationFrame(loop);
+}
+
+loop();
+</script>
+</body>
+</html>
