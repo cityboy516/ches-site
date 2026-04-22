@@ -301,7 +301,7 @@ function update(dt) {
   // Fire death — tile 5 is passable but lethal
   if (touching(player.x, player.y, player.w, player.h, 5)) {
     lives--;
-    if (lives <= 0) {
+    if (lives < 0) {
       gameOver = true;
       document.getElementById('gameOverOverlay').classList.add('active');
     } else {
