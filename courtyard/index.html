@@ -130,12 +130,18 @@ const canvas = document.getElementById('c');
 const ctx = canvas.getContext('2d');
 canvas.focus();
 
+const T = 40; // tile size in pixels
+
+// Waypoint helper — converts tile (row, col) to pixel position matching player offset
+function wp(r, c) { return { x: c * T + 6, y: r * T + 6 }; }
+
 // 0=floor  1=wall  2=coin  3=exit(locked)  4=exit(open)  5=fire(kills, not a wall)
 const levels = [
   {
     name: 'THE COURTYARD',
     totalCoins: 5,
     playerStart: { x: 46, y: 46 },
+    enemies: [],
     map: [
       [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
       [1,0,0,0,0,2,0,0,0,0,0,0,0,0,0,2,0,0,0,1],
@@ -158,6 +164,7 @@ const levels = [
     name: 'FIRE DUNGEON',
     totalCoins: 5,
     playerStart: { x: 46, y: 46 },
+    enemies: [],
     map: [
       [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
       [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
@@ -176,13 +183,45 @@ const levels = [
       [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
     ],
   },
+  {
+    name: 'THE GUARD HOUSE',
+    totalCoins: 5,
+    playerStart: { x: 46, y: 46 },
+    enemies: [
+      // Guard A — top corridor, horizontal patrol
+      { ...wp(1,2),  w:28, h:28, speed:1.5, path:[wp(1,2),  wp(1,17)] },
+      // Guard B — left edge, vertical patrol
+      { ...wp(2,1),  w:28, h:28, speed:1.5, path:[wp(2,1),  wp(11,1)] },
+      // Guard C — central corridor, rectangular loop
+      { ...wp(3,8),  w:28, h:28, speed:1.2, path:[wp(3,8),  wp(3,10), wp(9,10), wp(9,8)] },
+      // Guard D — bottom corridor, horizontal patrol
+      { ...wp(11,2), w:28, h:28, speed:1.5, path:[wp(11,2), wp(11,17)] },
+    ],
+    map: [
+      [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],  // 0
+      [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],  // 1: top patrol corridor (Guard A)
+      [1,0,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,0,1],  // 2: room walls, col 1 & 18 open
+      [1,0,1,0,0,0,0,1,0,0,0,1,0,0,0,0,0,1,0,1],  // 3: left room, central gap, right room
+      [1,0,1,0,2,0,0,1,0,0,0,1,0,0,2,0,0,1,0,1],  // 4: coins at (4,4) and (4,14)
+      [1,0,1,0,0,0,0,1,0,0,0,1,0,0,0,0,0,1,0,1],  // 5
+      [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],  // 6: mid horizontal connector
+      [1,0,1,0,0,0,0,1,0,0,0,1,0,0,0,0,0,1,0,1],  // 7
+      [1,0,1,0,0,2,0,1,0,0,0,1,0,0,0,2,0,1,0,1],  // 8: coins at (8,5) and (8,15)
+      [1,0,1,0,0,0,0,1,0,0,0,1,0,0,0,0,0,1,0,1],  // 9
+      [1,0,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,0,1],  // 10: room walls close
+      [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],  // 11: bottom patrol corridor (Guard D)
+      [1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1],  // 12: partial wall, col 18 open
+      [1,0,0,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,3,1],  // 13: coin at (13,6), exit at (13,18)
+      [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],  // 14
+    ],
+  },
 ];
 
-const T = 40;
 let map = [], ROWS, COLS, TOTAL_COINS;
 let currentLevel = 0;
 let lives = 3;
 let gameOver = false;
+let enemies = [];
 
 const player = {
   x: 46, y: 46,
@@ -214,6 +253,9 @@ function loadLevel(n) {
   player.coins = 0;
   player.won = false;
   player.facing = 'right';
+
+  // Reset enemies — shallow spread is safe: path array is read-only, only pathIndex/facing change
+  enemies = (levels[n].enemies || []).map(e => ({ ...e, pathIndex: 0, facing: 'right' }));
 
   // Update HUD
   document.getElementById('levelTitle').textContent = 'LEVEL ' + (n + 1) + ' — ' + levels[n].name;
@@ -257,6 +299,47 @@ function touching(x, y, w, h, val) {
   return null;
 }
 
+function overlapsPlayer(e) {
+  return player.x < e.x + e.w && player.x + player.w > e.x &&
+         player.y < e.y + e.h && player.y + player.h > e.y;
+}
+
+function killPlayer() {
+  lives--;
+  document.getElementById('livesCount').textContent = lives;
+  if (lives < 0) {
+    gameOver = true;
+    document.getElementById('gameOverOverlay').classList.add('active');
+  } else {
+    loadLevel(currentLevel);
+  }
+}
+
+function updateEnemies(dt) {
+  for (const e of enemies) {
+    const target = e.path[e.pathIndex];
+    const ddx = target.x - e.x;
+    const ddy = target.y - e.y;
+    const dist = Math.hypot(ddx, ddy);
+
+    if (dist < 3) {
+      // Snap to waypoint and advance to next (wraps around)
+      e.x = target.x;
+      e.y = target.y;
+      e.pathIndex = (e.pathIndex + 1) % e.path.length;
+    } else {
+      e.x += (ddx / dist) * e.speed * dt;
+      e.y += (ddy / dist) * e.speed * dt;
+      // Update facing based on dominant movement direction
+      if (Math.abs(ddx) > Math.abs(ddy)) {
+        e.facing = ddx > 0 ? 'right' : 'left';
+      } else {
+        e.facing = ddy > 0 ? 'down' : 'up';
+      }
+    }
+  }
+}
+
 function update(dt) {
   if (player.won || gameOver) return;
 
@@ -270,6 +353,8 @@ function update(dt) {
   if (!hitsWall(nx, player.y, player.w, player.h)) player.x = nx;
   const ny = player.y + dy;
   if (!hitsWall(player.x, ny, player.w, player.h)) player.y = ny;
+
+  updateEnemies(dt);
 
   // Coin collection
   const coin = touching(player.x, player.y, player.w, player.h, 2);
@@ -300,12 +385,15 @@ function update(dt) {
 
   // Fire death — tile 5 is passable but lethal
   if (touching(player.x, player.y, player.w, player.h, 5)) {
-    lives--;
-    if (lives < 0) {
-      gameOver = true;
-      document.getElementById('gameOverOverlay').classList.add('active');
-    } else {
-      loadLevel(currentLevel); // respawn; lives already decremented above
+    killPlayer();
+    return;
+  }
+
+  // Enemy collision — AABB overlap with any guard
+  for (const enemy of enemies) {
+    if (overlapsPlayer(enemy)) {
+      killPlayer();
+      return; // prevent further checks on now-reset state
     }
   }
 }
@@ -380,6 +468,40 @@ function drawMap() {
         }
       }
     }
+  }
+}
+
+function drawEnemies() {
+  for (const e of enemies) {
+    const { x, y, w, h, facing } = e;
+
+    // Drop shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.beginPath();
+    ctx.ellipse(x + w / 2 + 2, y + h + 3, w / 2 - 2, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Body — purple
+    roundRect(x, y, w, h, 5);
+    ctx.fillStyle = '#8e44ad'; ctx.fill();
+    ctx.strokeStyle = '#6c3483'; ctx.lineWidth = 2; ctx.stroke();
+
+    // Top highlight
+    roundRect(x + 3, y + 2, w - 6, 8, 3);
+    ctx.fillStyle = 'rgba(255,255,255,0.15)'; ctx.fill();
+
+    // Directional eye (same layout as player)
+    const eyePos = {
+      right: [x + w - 10, y + h / 2 - 3],
+      left:  [x + 4,      y + h / 2 - 3],
+      up:    [x + w / 2 - 3, y + 4],
+      down:  [x + w / 2 - 3, y + h - 10],
+    };
+    const [ex, ey] = eyePos[facing];
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(ex + 3, ey + 3, 4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#1a1a1a';
+    ctx.beginPath(); ctx.arc(ex + 3, ey + 3, 2, 0, Math.PI * 2); ctx.fill();
   }
 }
 
@@ -465,8 +587,9 @@ function loop(timestamp) {
   update(dt);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   drawMap();
-  drawPlayer();
-  // Dim the canvas when the game is paused (win or game over overlay is showing)
+  drawEnemies(); // enemies render below player
+  drawPlayer();  // player always on top
+  // Dim canvas when paused (overlay showing)
   if (player.won || gameOver) {
     ctx.fillStyle = 'rgba(0,0,0,0.55)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
