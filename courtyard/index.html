@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Level 1 — The Courtyard</title>
+<title>The Courtyard</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -55,16 +55,68 @@
     border-color: #f0b429;
     color: #f0b429;
   }
+
+  /* Win / Game Over overlays */
+  .overlay {
+    display: none;
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+    background: rgba(10,10,20,0.93);
+    border: 2px solid #f0b429;
+    border-radius: 14px;
+    padding: 36px 48px;
+    z-index: 10;
+    text-align: center;
+  }
+  .overlay.active { display: flex; }
+  .overlay h2 { font-size: 28px; letter-spacing: 3px; }
+  .overlay p  { font-size: 15px; color: #aaa; }
+  .overlay button {
+    margin-top: 6px;
+    padding: 10px 32px;
+    background: rgba(240,180,41,0.12);
+    border: 2px solid #f0b429;
+    border-radius: 8px;
+    color: #f0b429;
+    font-family: 'Courier New', monospace;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+  .overlay button:hover { background: rgba(240,180,41,0.28); }
+  #gameOverOverlay { border-color: #e74c3c; }
+  #gameOverOverlay button { border-color: #e74c3c; color: #e74c3c; background: rgba(231,76,60,0.1); }
+  #gameOverOverlay button:hover { background: rgba(231,76,60,0.25); }
 </style>
 </head>
 <body>
-<h1>LEVEL 1 — THE COURTYARD</h1>
+<h1 id="levelTitle">LEVEL 1 — THE COURTYARD</h1>
 <div id="hud">
-  <span>Coins: <b id="coinCount">0</b> / 5</span>
+  <span>Lives: <b id="livesCount">3</b></span>
+  <span>Coins: <b id="coinCount">0</b> / <span id="coinTotal">5</span></span>
   <span id="statusMsg">Find all 5 coins to unlock the exit</span>
 </div>
 <canvas id="c" width="800" height="600" tabindex="0"></canvas>
 <div id="hint">Arrow keys · or use the buttons below on mobile</div>
+
+<!-- Level complete overlay -->
+<div id="winOverlay" class="overlay">
+  <h2 style="color:#f0b429">LEVEL COMPLETE!</h2>
+  <p id="winMsg">You made it through.</p>
+  <button id="nextBtn">Next Level →</button>
+</div>
+
+<!-- Game over overlay -->
+<div id="gameOverOverlay" class="overlay">
+  <h2 style="color:#e74c3c">GAME OVER</h2>
+  <p>You ran out of lives.</p>
+  <button id="restartBtn">Play Again</button>
+</div>
+
 <div id="dpad">
   <button id="btn-up">▲</button>
   <button id="btn-left">◀</button>
@@ -78,29 +130,62 @@ const canvas = document.getElementById('c');
 const ctx = canvas.getContext('2d');
 canvas.focus();
 
-// 0=floor  1=wall  2=coin  3=exit(locked)  4=exit(open)
-const map = [
-  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-  [1,0,0,0,0,2,0,0,0,0,0,0,0,0,0,2,0,0,0,1],
-  [1,0,0,1,1,1,1,0,0,1,1,1,1,0,0,1,1,0,0,1],
-  [1,0,0,1,0,0,0,0,0,0,0,0,1,0,0,1,0,0,0,1],
-  [1,0,0,1,0,1,1,1,1,1,1,0,1,0,0,0,0,0,0,1],
-  [1,0,0,0,0,1,0,0,2,0,1,0,1,0,1,1,1,1,0,1],
-  [1,0,1,1,0,1,0,1,1,0,1,0,0,0,1,0,0,1,0,1],
-  [1,0,0,1,0,1,0,1,0,0,1,0,1,0,1,0,0,1,0,1],
-  [1,0,0,1,0,0,0,0,0,2,0,0,1,0,0,0,0,0,0,1],
-  [1,0,0,0,0,1,1,1,1,1,1,0,1,0,1,1,1,1,0,1],
-  [1,0,1,1,0,0,0,0,0,0,1,0,1,0,0,0,0,1,0,1],
-  [1,0,0,1,0,1,1,1,1,0,0,0,0,0,1,1,0,0,0,1],
-  [1,0,0,0,0,0,0,0,1,2,1,1,1,0,0,0,0,1,0,1],
-  [1,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,3,1],
-  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+// 0=floor  1=wall  2=coin  3=exit(locked)  4=exit(open)  5=fire(kills, not a wall)
+const levels = [
+  {
+    name: 'THE COURTYARD',
+    totalCoins: 5,
+    playerStart: { x: 46, y: 46 },
+    map: [
+      [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+      [1,0,0,0,0,2,0,0,0,0,0,0,0,0,0,2,0,0,0,1],
+      [1,0,0,1,1,1,1,0,0,1,1,1,1,0,0,1,1,0,0,1],
+      [1,0,0,1,0,0,0,0,0,0,0,0,1,0,0,1,0,0,0,1],
+      [1,0,0,1,0,1,1,1,1,1,1,0,1,0,0,0,0,0,0,1],
+      [1,0,0,0,0,1,0,0,2,0,1,0,1,0,1,1,1,1,0,1],
+      [1,0,1,1,0,1,0,1,1,0,1,0,0,0,1,0,0,1,0,1],
+      [1,0,0,1,0,1,0,1,0,0,1,0,1,0,1,0,0,1,0,1],
+      [1,0,0,1,0,0,0,0,0,2,0,0,1,0,0,0,0,0,0,1],
+      [1,0,0,0,0,1,1,1,1,1,1,0,1,0,1,1,1,1,0,1],
+      [1,0,1,1,0,0,0,0,0,0,1,0,1,0,0,0,0,1,0,1],
+      [1,0,0,1,0,1,1,1,1,0,0,0,0,0,1,1,0,0,0,1],
+      [1,0,0,0,0,0,0,0,1,2,1,1,1,0,0,0,0,1,0,1],
+      [1,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,3,1],
+      [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+    ],
+  },
+  {
+    name: 'FIRE DUNGEON',
+    totalCoins: 5,
+    playerStart: { x: 46, y: 46 },
+    map: [
+      [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+      [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+      [1,0,1,1,0,1,1,1,0,1,0,1,1,1,0,1,1,1,0,1],
+      [1,0,1,2,0,0,0,1,0,1,0,0,0,1,0,0,0,2,0,1],
+      [1,0,1,0,1,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1],
+      [1,0,0,0,1,0,0,5,5,5,0,1,0,0,0,1,0,0,0,1],
+      [1,1,1,0,1,0,1,0,0,0,0,1,0,1,0,1,0,1,1,1],
+      [1,0,0,0,0,0,1,0,1,1,1,1,0,1,0,0,0,2,0,1],
+      [1,0,1,1,1,0,1,0,0,0,0,0,0,1,5,5,5,1,0,1],
+      [1,0,0,0,1,0,0,0,1,2,1,0,0,1,0,0,0,1,0,1],
+      [1,1,1,0,1,1,1,0,1,0,1,0,1,0,0,0,0,0,0,1],
+      [1,0,0,0,0,0,1,0,5,5,5,0,1,0,1,1,1,1,0,1],
+      [1,0,1,1,0,0,1,0,0,0,0,0,1,0,0,0,0,1,0,1],
+      [1,0,0,1,0,2,0,0,0,0,0,0,0,0,0,0,0,0,3,1],
+      [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+    ],
+  },
 ];
 
-const T = 40, ROWS = map.length, COLS = map[0].length, TOTAL_COINS = 5;
+const T = 40;
+let map = [], ROWS, COLS, TOTAL_COINS;
+let currentLevel = 0;
+let lives = 3;
+let gameOver = false;
 
 const player = {
-  x: T + 6, y: T + 6,
+  x: 46, y: 46,
   w: 28, h: 28,
   speed: 3,
   facing: 'right',
@@ -115,6 +200,37 @@ window.addEventListener('keydown', e => {
 });
 window.addEventListener('keyup', e => { delete keys[e.key]; });
 
+function loadLevel(n) {
+  currentLevel = n;
+  // Deep-copy map so collected coins / opened exits don't persist across respawns
+  map = levels[n].map.map(row => [...row]);
+  ROWS = map.length;
+  COLS = map[0].length;
+  TOTAL_COINS = levels[n].totalCoins;
+
+  // Reset player
+  player.x = levels[n].playerStart.x;
+  player.y = levels[n].playerStart.y;
+  player.coins = 0;
+  player.won = false;
+  player.facing = 'right';
+
+  // Update HUD
+  document.getElementById('levelTitle').textContent = 'LEVEL ' + (n + 1) + ' — ' + levels[n].name;
+  document.getElementById('coinCount').textContent = '0';
+  document.getElementById('coinTotal').textContent = TOTAL_COINS;
+  document.getElementById('livesCount').textContent = lives;
+  const status = document.getElementById('statusMsg');
+  status.textContent = 'Find all ' + TOTAL_COINS + ' coins to unlock the exit';
+  status.classList.remove('unlocked');
+
+  // Hide overlays
+  document.getElementById('winOverlay').classList.remove('active');
+  document.getElementById('gameOverOverlay').classList.remove('active');
+
+  gameOver = false;
+}
+
 function tile(r, c) {
   if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return 1;
   return map[r][c];
@@ -126,6 +242,7 @@ function hitsWall(x, y, w, h) {
   for (let r = r0; r <= r1; r++)
     for (let c = c0; c <= c1; c++) {
       const t = tile(r, c);
+      // 1=wall, 3=locked exit are solid. Fire (5) is passable — it kills, not blocks.
       if (t === 1 || t === 3) return true;
     }
   return false;
@@ -141,7 +258,7 @@ function touching(x, y, w, h, val) {
 }
 
 function update(dt) {
-  if (player.won) return;
+  if (player.won || gameOver) return;
 
   let dx = 0, dy = 0;
   if (keys['ArrowLeft'])  { dx = -player.speed * dt; player.facing = 'left'; }
@@ -154,6 +271,7 @@ function update(dt) {
   const ny = player.y + dy;
   if (!hitsWall(player.x, ny, player.w, player.h)) player.y = ny;
 
+  // Coin collection
   const coin = touching(player.x, player.y, player.w, player.h, 2);
   if (coin) {
     map[coin.r][coin.c] = 0;
@@ -169,8 +287,26 @@ function update(dt) {
     }
   }
 
+  // Exit reached
   if (touching(player.x, player.y, player.w, player.h, 4)) {
     player.won = true;
+    const isLast = currentLevel + 1 >= levels.length;
+    document.getElementById('winMsg').textContent = isLast
+      ? 'You completed the game!' : 'You made it through.';
+    document.getElementById('nextBtn').textContent = isLast ? 'Play Again' : 'Next Level →';
+    document.getElementById('winOverlay').classList.add('active');
+    return;
+  }
+
+  // Fire death — tile 5 is passable but lethal
+  if (touching(player.x, player.y, player.w, player.h, 5)) {
+    lives--;
+    if (lives <= 0) {
+      gameOver = true;
+      document.getElementById('gameOverOverlay').classList.add('active');
+    } else {
+      loadLevel(currentLevel); // respawn; lives already decremented above
+    }
   }
 }
 
@@ -229,6 +365,18 @@ function drawMap() {
           ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
           ctx.fillText('EXIT', x + T / 2, y + T / 2);
           ctx.shadowBlur = 0;
+
+        } else if (t === 5) {
+          // Fire tile — each tile flickers independently using its grid position as offset
+          const flicker = Math.sin(tick * 0.13 + c * 1.7 + r * 2.3);
+          ctx.shadowColor = '#ff6b00';
+          ctx.shadowBlur = 14 + 8 * Math.abs(flicker);
+          ctx.fillStyle = flicker > 0 ? '#ff6b00' : '#c0392b';
+          ctx.fillRect(x + 5, y + 5, T - 10, T - 10);
+          // Inner hot spot
+          ctx.fillStyle = 'rgba(255,220,100,0.55)';
+          ctx.beginPath(); ctx.arc(x + T / 2, y + T / 2, 5, 0, Math.PI * 2); ctx.fill();
+          ctx.shadowBlur = 0; // always reset — glow bleeds into adjacent tiles if left set
         }
       }
     }
@@ -263,24 +411,6 @@ function drawPlayer() {
   ctx.beginPath(); ctx.arc(ex + 3, ey + 3, 2, 0, Math.PI * 2); ctx.fill();
 }
 
-function drawWin() {
-  ctx.fillStyle = 'rgba(0,0,0,0.72)';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-
-  ctx.fillStyle = '#f0b429';
-  ctx.font = 'bold 50px Courier New';
-  ctx.fillText('LEVEL COMPLETE!', canvas.width / 2, canvas.height / 2 - 28);
-
-  ctx.fillStyle = '#aaa';
-  ctx.font = '20px Courier New';
-  ctx.fillText('You escaped the courtyard.', canvas.width / 2, canvas.height / 2 + 20);
-
-  ctx.fillStyle = '#555';
-  ctx.font = '14px Courier New';
-  ctx.fillText('Refresh to play again', canvas.width / 2, canvas.height / 2 + 58);
-}
-
 // Scale canvas to fit smaller screens while keeping internal resolution
 function scaleCanvas() {
   const maxW = Math.min(800, window.innerWidth - 8);
@@ -308,6 +438,23 @@ bindBtn('btn-down',  'ArrowDown');
 bindBtn('btn-left',  'ArrowLeft');
 bindBtn('btn-right', 'ArrowRight');
 
+// Overlay button handlers
+document.getElementById('nextBtn').addEventListener('click', () => {
+  player.won = false;
+  if (currentLevel + 1 < levels.length) {
+    loadLevel(currentLevel + 1);
+  } else {
+    // All levels complete — reset to start
+    lives = 3;
+    loadLevel(0);
+  }
+});
+
+document.getElementById('restartBtn').addEventListener('click', () => {
+  lives = 3;
+  loadLevel(0);
+});
+
 let lastTime = 0;
 function loop(timestamp) {
   // dt: how many 60fps-frames worth of time passed (1.0 = perfect 60fps, 2.0 = 30fps, etc.)
@@ -319,10 +466,15 @@ function loop(timestamp) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   drawMap();
   drawPlayer();
-  if (player.won) drawWin();
+  // Dim the canvas when the game is paused (win or game over overlay is showing)
+  if (player.won || gameOver) {
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
   requestAnimationFrame(loop);
 }
 
+loadLevel(0);
 loop();
 </script>
 </body>
