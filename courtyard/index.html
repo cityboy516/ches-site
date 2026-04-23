@@ -131,6 +131,8 @@ const ctx = canvas.getContext('2d');
 canvas.focus();
 
 const T = 40; // tile size in pixels
+const CONE_RANGE = 220;              // vision distance in pixels (~5.5 tiles)
+const CONE_HALF_ANGLE = Math.PI / 4; // 45° either side = 90° total cone
 
 // Waypoint helper — converts tile (row, col) to pixel position matching player offset
 function wp(r, c) { return { x: c * T + 6, y: r * T + 6 }; }
@@ -215,6 +217,38 @@ const levels = [
       [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],  // 14
     ],
   },
+  {
+    name: 'THE WATCH',
+    totalCoins: 5,
+    playerStart: { x: 46, y: 46 },
+    enemies: [
+      // Guard A — top corridor horizontal patrol
+      { ...wp(1,2),  w:28, h:28, speed:1.2, chaseSpeed:2.5, path:[wp(1,2),  wp(1,17)] },
+      // Guard B — right edge vertical patrol
+      { ...wp(1,18), w:28, h:28, speed:1.2, chaseSpeed:2.5, path:[wp(1,18), wp(10,18)] },
+      // Guard C — large outer rectangle loop
+      { ...wp(4,1),  w:28, h:28, speed:1.0, chaseSpeed:2.5, path:[wp(4,1),  wp(4,18), wp(10,18), wp(10,1)] },
+      // Guard D — exit approach patrol
+      { ...wp(13,8), w:28, h:28, speed:1.2, chaseSpeed:2.5, path:[wp(13,8), wp(13,16)] },
+    ],
+    map: [
+      [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],  // 0
+      [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],  // 1  player start at (1,1)
+      [1,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,1],  // 2  corner pillars (hide spots)
+      [1,0,1,0,0,2,0,0,0,0,0,0,0,0,2,0,0,1,0,1],  // 3  coins at (3,5) and (3,14)
+      [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],  // 4  wide open (Guard C patrol row)
+      [1,0,0,0,0,1,1,1,0,0,0,1,1,1,0,0,0,0,0,1],  // 5  T-wall tops
+      [1,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,0,1],  // 6  alcove recesses
+      [1,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0,0,1],  // 7  central coin at (7,9)
+      [1,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,0,1],  // 8  alcove recesses (mirror)
+      [1,0,0,0,0,1,1,1,0,0,0,1,1,1,0,0,0,0,0,1],  // 9  T-wall bottoms (mirror)
+      [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],  // 10 wide open (Guard C patrol row)
+      [1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1],  // 11 single pillars
+      [1,0,1,0,0,0,0,0,0,0,0,0,0,0,2,0,0,1,0,1],  // 12 coin at (12,14)
+      [1,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,3,1],  // 13 coin at (13,4), exit at (13,18)
+      [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],  // 14
+    ],
+  },
 ];
 
 let map = [], ROWS, COLS, TOTAL_COINS;
@@ -255,7 +289,7 @@ function loadLevel(n) {
   player.facing = 'right';
 
   // Reset enemies — shallow spread is safe: path array is read-only, only pathIndex/facing change
-  enemies = (levels[n].enemies || []).map(e => ({ ...e, pathIndex: 0, facing: 'right' }));
+  enemies = (levels[n].enemies || []).map(e => ({ ...e, pathIndex: 0, facing: 'right', mode: 'patrol' }));
 
   // Update HUD
   document.getElementById('levelTitle').textContent = 'LEVEL ' + (n + 1) + ' — ' + levels[n].name;
@@ -304,6 +338,17 @@ function overlapsPlayer(e) {
          player.y < e.y + e.h && player.y + player.h > e.y;
 }
 
+function playerInCone(e) {
+  const cx = e.x + e.w / 2, cy = e.y + e.h / 2;
+  const px = player.x + player.w / 2, py = player.y + player.h / 2;
+  const dx = px - cx, dy = py - cy;
+  if (Math.hypot(dx, dy) > CONE_RANGE) return false;
+  const faceAngle = { right: 0, left: Math.PI, up: -Math.PI / 2, down: Math.PI / 2 }[e.facing];
+  let diff = Math.abs(Math.atan2(dy, dx) - faceAngle);
+  if (diff > Math.PI) diff = 2 * Math.PI - diff; // normalise — prevents wrap-around false negatives
+  return diff <= CONE_HALF_ANGLE;
+}
+
 function killPlayer() {
   lives--;
   document.getElementById('livesCount').textContent = lives;
@@ -317,25 +362,42 @@ function killPlayer() {
 
 function updateEnemies(dt) {
   for (const e of enemies) {
-    const target = e.path[e.pathIndex];
-    const ddx = target.x - e.x;
-    const ddy = target.y - e.y;
-    const dist = Math.hypot(ddx, ddy);
-
-    if (dist < 3) {
-      // Snap to waypoint and advance to next (wraps around)
-      e.x = target.x;
-      e.y = target.y;
-      e.pathIndex = (e.pathIndex + 1) % e.path.length;
-    } else {
-      e.x += (ddx / dist) * e.speed * dt;
-      e.y += (ddy / dist) * e.speed * dt;
-      // Update facing based on dominant movement direction
-      if (Math.abs(ddx) > Math.abs(ddy)) {
-        e.facing = ddx > 0 ? 'right' : 'left';
+    if (e.mode === 'patrol') {
+      // Waypoint patrol
+      const target = e.path[e.pathIndex];
+      const ddx = target.x - e.x, ddy = target.y - e.y;
+      const dist = Math.hypot(ddx, ddy);
+      if (dist < 3) {
+        e.x = target.x; e.y = target.y;
+        e.pathIndex = (e.pathIndex + 1) % e.path.length;
       } else {
-        e.facing = ddy > 0 ? 'down' : 'up';
+        e.x += (ddx / dist) * e.speed * dt;
+        e.y += (ddy / dist) * e.speed * dt;
+        e.facing = Math.abs(ddx) > Math.abs(ddy)
+          ? (ddx > 0 ? 'right' : 'left')
+          : (ddy > 0 ? 'down' : 'up');
       }
+      // Only cone-aware enemies (those with chaseSpeed) can switch to chase
+      if (e.chaseSpeed && playerInCone(e)) e.mode = 'chase';
+
+    } else {
+      // Chase: move toward player with wall-slide collision
+      const cx = e.x + e.w / 2, cy = e.y + e.h / 2;
+      const px = player.x + player.w / 2, py = player.y + player.h / 2;
+      const dx = px - cx, dy = py - cy;
+      const dist = Math.hypot(dx, dy);
+      if (dist > 1) {
+        const spd = (e.chaseSpeed || e.speed * 2) * dt;
+        const mx = (dx / dist) * spd, my = (dy / dist) * spd;
+        // Apply x and y independently for smooth wall-sliding
+        if (!hitsWall(e.x + mx, e.y,      e.w, e.h)) e.x += mx;
+        if (!hitsWall(e.x,      e.y + my, e.w, e.h)) e.y += my;
+        e.facing = Math.abs(dx) > Math.abs(dy)
+          ? (dx > 0 ? 'right' : 'left')
+          : (dy > 0 ? 'down' : 'up');
+      }
+      // Return to patrol when player leaves the cone
+      if (!playerInCone(e)) e.mode = 'patrol';
     }
   }
 }
@@ -475,6 +537,20 @@ function drawEnemies() {
   for (const e of enemies) {
     const { x, y, w, h, facing } = e;
 
+    // Vision cone — only for cone-aware enemies (those with chaseSpeed)
+    if (e.chaseSpeed !== undefined) {
+      const faceAngle = { right: 0, left: Math.PI, up: -Math.PI / 2, down: Math.PI / 2 }[facing];
+      const cx = x + w / 2, cy = y + h / 2;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.arc(cx, cy, CONE_RANGE, faceAngle - CONE_HALF_ANGLE, faceAngle + CONE_HALF_ANGLE);
+      ctx.closePath();
+      ctx.fillStyle = e.mode === 'chase'
+        ? 'rgba(231,76,60,0.18)'    // red when chasing
+        : 'rgba(142,68,173,0.10)';  // faint purple when patrolling
+      ctx.fill();
+    }
+
     // Drop shadow
     ctx.fillStyle = 'rgba(0,0,0,0.3)';
     ctx.beginPath();
@@ -559,6 +635,23 @@ bindBtn('btn-up',    'ArrowUp');
 bindBtn('btn-down',  'ArrowDown');
 bindBtn('btn-left',  'ArrowLeft');
 bindBtn('btn-right', 'ArrowRight');
+
+// ============================================================
+// DEV MODE — set DEV_MODE = false (or delete this block) before release
+const DEV_MODE = true;
+if (DEV_MODE) {
+  window.addEventListener('keydown', e => {
+    if (e.key === 'n' || e.key === 'N') {
+      player.won = false; gameOver = false; lives = 3;
+      loadLevel(Math.min(currentLevel + 1, levels.length - 1));
+    }
+    if (e.key === 'b' || e.key === 'B') {
+      player.won = false; gameOver = false; lives = 3;
+      loadLevel(Math.max(currentLevel - 1, 0));
+    }
+  });
+}
+// ============================================================
 
 // Overlay button handlers
 document.getElementById('nextBtn').addEventListener('click', () => {
