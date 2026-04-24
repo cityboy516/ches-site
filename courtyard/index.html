@@ -249,6 +249,40 @@ const levels = [
       [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],  // 14
     ],
   },
+  {
+    name: 'THE CROSSING',
+    totalCoins: 6,
+    playerStart: { x: 46, y: 46 },
+    enemies: [
+      // Guard A — upper crossing patrol
+      { ...wp(3,2),  w:28, h:28, speed:1.45, path:[wp(3,2),  wp(3,16)] },
+      // Guard B — centre vertical patrol
+      { ...wp(2,9),  w:28, h:28, speed:1.25, path:[wp(2,9),  wp(12,9)] },
+      // Guard C — lower fire corridor patrol
+      { ...wp(11,3), w:28, h:28, speed:1.35, path:[wp(11,3), wp(11,15)] },
+      // Watcher D — right-side cone guard
+      { ...wp(5,17), w:28, h:28, speed:1.05, chaseSpeed:2.35, path:[wp(5,17), wp(9,17)] },
+      // Watcher E — exit approach cone guard
+      { ...wp(13,10), w:28, h:28, speed:1.05, chaseSpeed:2.35, path:[wp(13,10), wp(13,16)] },
+    ],
+    map: [
+      [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+      [1,0,0,0,0,0,2,1,0,0,0,0,0,1,0,0,0,2,0,1],
+      [1,0,1,1,1,0,0,1,0,5,5,5,0,1,0,1,1,1,0,1],
+      [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1],
+      [1,0,1,0,1,1,1,1,0,1,1,1,1,1,0,1,0,1,0,1],
+      [1,0,1,0,0,0,2,1,0,0,0,0,0,1,0,1,0,0,0,1],
+      [1,0,1,1,1,0,0,1,1,1,0,1,0,1,0,1,1,1,0,1],
+      [1,0,0,0,1,0,0,0,0,0,2,1,0,0,0,0,0,1,0,1],
+      [1,1,1,0,1,1,1,1,0,1,1,1,1,1,5,5,0,1,0,1],
+      [1,0,0,0,0,0,2,1,0,0,0,0,0,1,0,0,0,0,0,1],
+      [1,0,1,1,1,1,0,1,1,1,5,1,0,1,0,1,1,1,0,1],
+      [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1],
+      [1,0,1,1,0,1,1,1,0,1,1,1,1,1,0,1,0,1,0,1],
+      [1,0,0,0,0,0,0,1,0,0,0,0,2,0,0,1,0,0,3,1],
+      [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+    ],
+  },
 ];
 
 let map = [], ROWS, COLS, TOTAL_COINS;
@@ -637,20 +671,25 @@ bindBtn('btn-left',  'ArrowLeft');
 bindBtn('btn-right', 'ArrowRight');
 
 // ============================================================
-// DEV MODE — set DEV_MODE = false (or delete this block) before release
-const DEV_MODE = true;
-if (DEV_MODE) {
-  window.addEventListener('keydown', e => {
-    if (e.key === 'n' || e.key === 'N') {
-      player.won = false; gameOver = false; lives = 3;
-      loadLevel(Math.min(currentLevel + 1, levels.length - 1));
-    }
-    if (e.key === 'b' || e.key === 'B') {
-      player.won = false; gameOver = false; lives = 3;
-      loadLevel(Math.max(currentLevel - 1, 0));
-    }
-  });
-}
+// DEV MODE — type DEV_CODE during play to enable level-skip keys.
+const DEV_CODE = 'debug';
+let devBuffer = '';
+let devModeEnabled = false;
+window.addEventListener('keydown', e => {
+  if (!devModeEnabled && e.key.length === 1) {
+    devBuffer = (devBuffer + e.key.toLowerCase()).slice(-DEV_CODE.length);
+    if (devBuffer === DEV_CODE) devModeEnabled = true;
+  }
+  if (!devModeEnabled) return;
+  if (e.key === 'n' || e.key === 'N') {
+    player.won = false; gameOver = false; lives = 3;
+    loadLevel(Math.min(currentLevel + 1, levels.length - 1));
+  }
+  if (e.key === 'b' || e.key === 'B') {
+    player.won = false; gameOver = false; lives = 3;
+    loadLevel(Math.max(currentLevel - 1, 0));
+  }
+});
 // ============================================================
 
 // Overlay button handlers
