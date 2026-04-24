@@ -16,7 +16,7 @@ function killPlayer() {
     gameOver = true;
     document.getElementById('gameOverOverlay').classList.add('active');
   } else {
-    loadLevel(currentLevel);
+    respawnPlayer(currentLevel);
   }
 }
 
@@ -31,7 +31,7 @@ function updateEnemies(dt) {
         e.x = target.x; e.y = target.y;
         e.pathIndex = (e.pathIndex + 1) % e.path.length;
       } else {
-        moveEntity(e, (ddx / dist) * e.speed * dt, (ddy / dist) * e.speed * dt);
+        moveEntity(e, (ddx / dist) * e.speed * dt, (ddy / dist) * e.speed * dt, enemies);
         e.facing = Math.abs(ddx) > Math.abs(ddy)
           ? (ddx > 0 ? 'right' : 'left')
           : (ddy > 0 ? 'down' : 'up');
@@ -49,7 +49,7 @@ function updateEnemies(dt) {
         const spd = (e.chaseSpeed || e.speed * 2) * dt;
         const mx = (dx / dist) * spd, my = (dy / dist) * spd;
         // Apply x and y independently for smooth wall-sliding
-        moveEntity(e, mx, my);
+        moveEntity(e, mx, my, enemies);
         e.facing = Math.abs(dx) > Math.abs(dy)
           ? (dx > 0 ? 'right' : 'left')
           : (dy > 0 ? 'down' : 'up');

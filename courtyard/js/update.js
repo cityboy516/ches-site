@@ -5,7 +5,7 @@ function killPlayer() {
     gameOver = true;
     document.getElementById('gameOverOverlay').classList.add('active');
   } else {
-    loadLevel(currentLevel);
+    respawnPlayer(currentLevel);
   }
 }
 

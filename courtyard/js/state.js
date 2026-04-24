@@ -60,3 +60,23 @@ function loadLevel(n) {
 
   gameOver = false;
 }
+
+function respawnPlayer(n) {
+  // Preserve map state (collected coins, opened exits, opened gates) and player.coins/keys
+  player.x = levels[n].playerStart.x;
+  player.y = levels[n].playerStart.y;
+  player.won = false;
+  player.facing = 'right';
+
+  // Reset enemies to start so they don't accumulate in unpredictable positions
+  enemies = (levels[n].enemies || []).map(e => ({ ...e, pathIndex: 0, facing: 'right', mode: 'patrol' }));
+
+  // Update HUD lives only — coins and keys are unchanged
+  document.getElementById('livesCount').textContent = lives;
+
+  // Hide overlays
+  document.getElementById('winOverlay').classList.remove('active');
+  document.getElementById('gameOverOverlay').classList.remove('active');
+
+  gameOver = false;
+}

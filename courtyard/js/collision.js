@@ -29,15 +29,19 @@ function overlapsPlayer(e) {
          player.y < e.y + e.h && player.y + player.h > e.y;
 }
 
-function moveEntity(e, mx, my) {
+function overlapsEntity(ax, ay, aw, ah, b) {
+  return ax < b.x + b.w && ax + aw > b.x &&
+         ay < b.y + b.h && ay + ah > b.y;
+}
+
+function moveEntity(e, mx, my, others) {
+  const blocked = (x, y) => {
+    if (hitsWall(x, y, e.w, e.h)) return true;
+    if (others) for (const o of others) if (o !== e && overlapsEntity(x, y, e.w, e.h, o)) return true;
+    return false;
+  };
   let moved = false;
-  if (!hitsWall(e.x + mx, e.y, e.w, e.h)) {
-    e.x += mx;
-    moved = true;
-  }
-  if (!hitsWall(e.x, e.y + my, e.w, e.h)) {
-    e.y += my;
-    moved = true;
-  }
+  if (!blocked(e.x + mx, e.y)) { e.x += mx; moved = true; }
+  if (!blocked(e.x, e.y + my)) { e.y += my; moved = true; }
   return moved;
 }
