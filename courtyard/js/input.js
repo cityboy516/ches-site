@@ -22,6 +22,13 @@ bindBtn('btn-down',  'ArrowDown');
 bindBtn('btn-left',  'ArrowLeft');
 bindBtn('btn-right', 'ArrowRight');
 
+function releaseDpadKeys() {
+  for (const key of ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']) delete keys[key];
+  for (const id of ['btn-up', 'btn-down', 'btn-left', 'btn-right']) {
+    document.getElementById(id).classList.remove('pressed');
+  }
+}
+
 // ============================================================
 // DEV MODE — type DEV_CODE during play to enable level-skip keys.
 const DEV_CODE = 'debug';

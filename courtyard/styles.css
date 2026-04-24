@@ -4,6 +4,7 @@
     display: flex; flex-direction: column;
     align-items: center; justify-content: center;
     min-height: 100vh;
+    min-height: 100svh;
     font-family: 'Courier New', monospace;
     color: #ccc; gap: 10px;
   }
@@ -20,6 +21,19 @@
   #hud b { color: #f0b429; }
   #statusMsg { color: #aaa; }
   #statusMsg.unlocked { color: #2ecc71; }
+  #gameShell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    max-width: calc(100vw - 12px);
+  }
+  body.controls-side #gameShell {
+    flex-direction: row;
+    align-items: center;
+  }
   canvas { border: 2px solid #2a2a4a; display: block; }
   #hint { font-size: 12px; color: #444; }
   #back { font-size: 12px; color: #444; margin-bottom: 4px; }
@@ -27,14 +41,44 @@
   #back a:hover { color: #888; }
   #build { font-size: 10px; color: #333; margin-bottom: 10px; }
 
+  #controlsPanel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-width: 150px;
+  }
+  body.controls-side #controlsPanel {
+    min-width: 206px;
+  }
+  #controlsToggle {
+    padding: 8px 16px;
+    min-width: 118px;
+    background: rgba(240,180,41,0.1);
+    border: 2px solid #3f3f64;
+    border-radius: 8px;
+    color: #cfa23a;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.08s, border-color 0.08s, color 0.08s;
+  }
+  #controlsToggle[aria-expanded="true"] {
+    background: rgba(240,180,41,0.18);
+    border-color: #f0b429;
+    color: #f0b429;
+  }
+
   /* D-pad */
   #dpad {
     display: grid;
     grid-template-columns: repeat(3, 64px);
     grid-template-rows: repeat(3, 64px);
     gap: 6px;
-    margin: 6px 0;
+    margin: 0;
   }
+  #dpad[hidden] { display: none; }
   #btn-up    { grid-column: 2; grid-row: 1; }
   #btn-left  { grid-column: 1; grid-row: 2; }
   #btn-right { grid-column: 3; grid-row: 2; }
@@ -99,6 +143,13 @@
     h1 { font-size: 16px; letter-spacing: 1.5px; margin-top: 8px; }
     #hud { gap: 4px 14px; font-size: 12px; }
     #hint, #back { font-size: 11px; }
+    #gameShell { gap: 6px; }
+    #controlsPanel { gap: 5px; }
+    #controlsToggle {
+      padding: 6px 12px;
+      min-width: 102px;
+      font-size: 12px;
+    }
     #dpad {
       grid-template-columns: repeat(3, 54px);
       grid-template-rows: repeat(3, 54px);

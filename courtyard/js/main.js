@@ -1,20 +1,48 @@
 // Scale canvas to fit smaller screens while keeping internal resolution
+const controlsPanel = document.getElementById('controlsPanel');
+const controlsToggle = document.getElementById('controlsToggle');
+const dpad = document.getElementById('dpad');
+let controlsVisible = false;
+
+function shouldPlaceControlsSide() {
+  return window.innerWidth > window.innerHeight * 1.12 && window.innerWidth >= 840;
+}
+
+function applyControlsLayout() {
+  const side = shouldPlaceControlsSide();
+  document.body.classList.toggle('controls-side', side);
+  document.body.classList.toggle('controls-stack', !side);
+  document.body.classList.toggle('controls-visible', controlsVisible);
+  dpad.hidden = !controlsVisible;
+  controlsToggle.setAttribute('aria-expanded', controlsVisible ? 'true' : 'false');
+  controlsToggle.textContent = controlsVisible ? 'Hide Controls' : 'Controls';
+}
+
 function scaleCanvas() {
-  const maxW = Math.min(800, window.innerWidth - 12);
+  applyControlsLayout();
+  const sideControls = document.body.classList.contains('controls-side');
+  const stackedControls = !sideControls;
+  const sideControlsWidth = sideControls ? controlsPanel.offsetWidth + 14 : 0;
+  const maxW = Math.min(800, window.innerWidth - sideControlsWidth - 12);
   const verticalChrome = [
     document.getElementById('levelTitle'),
     document.getElementById('hud'),
     document.getElementById('hint'),
-    document.getElementById('dpad'),
     document.getElementById('back'),
     document.getElementById('build'),
-  ].reduce((total, el) => total + (el ? el.offsetHeight : 0), 80);
-  const maxH = Math.min(600, window.innerHeight - verticalChrome - 72);
+  ].reduce((total, el) => total + (el ? el.offsetHeight : 0), 0);
+  const controlsHeight = stackedControls ? controlsPanel.offsetHeight + 10 : 0;
+  const maxH = Math.min(600, window.innerHeight - verticalChrome - controlsHeight - 46);
   const scale = Math.max(0.3, Math.min(maxW / 800, maxH / 600));
   canvas.style.width  = Math.round(800 * scale) + 'px';
   canvas.style.height = Math.round(600 * scale) + 'px';
 }
 window.addEventListener('resize', scaleCanvas);
+controlsToggle.addEventListener('click', () => {
+  controlsVisible = !controlsVisible;
+  if (!controlsVisible) releaseDpadKeys();
+  scaleCanvas();
+});
 scaleCanvas();
 
 // Overlay button handlers

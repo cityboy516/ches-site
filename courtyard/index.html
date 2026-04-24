@@ -14,8 +14,19 @@
   <span id="keyHud">Key: <b id="keyCount">0</b> / <span id="keyTotal">0</span></span>
   <span id="statusMsg">Find all 5 coins to unlock the exit</span>
 </div>
-<canvas id="c" width="800" height="600" tabindex="0"></canvas>
-<div id="hint">Arrow keys · or use the buttons below on mobile</div>
+<div id="gameShell">
+  <canvas id="c" width="800" height="600" tabindex="0"></canvas>
+  <div id="controlsPanel">
+    <button id="controlsToggle" type="button" aria-expanded="false" aria-controls="dpad">Controls</button>
+    <div id="dpad" hidden>
+      <button id="btn-up">▲</button>
+      <button id="btn-left">◀</button>
+      <button id="btn-right">▶</button>
+      <button id="btn-down">▼</button>
+    </div>
+  </div>
+</div>
+<div id="hint">Arrow keys · optional touch controls</div>
 
 <!-- Level complete overlay -->
 <div id="winOverlay" class="overlay">
@@ -31,14 +42,8 @@
   <button id="restartBtn">Play Again</button>
 </div>
 
-<div id="dpad">
-  <button id="btn-up">▲</button>
-  <button id="btn-left">◀</button>
-  <button id="btn-right">▶</button>
-  <button id="btn-down">▼</button>
-</div>
 <div id="back"><a href="/">← ches.uk</a></div>
-<div id="build">build: 24 Apr 2026 c</div>
+<div id="build">build: 24 Apr 2026 d</div>
 
 <script src="js/constants.js"></script>
 <script src="js/levels/index.js"></script>
