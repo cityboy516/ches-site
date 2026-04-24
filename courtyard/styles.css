@@ -1,0 +1,86 @@
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0f0f1a;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    min-height: 100vh;
+    font-family: 'Courier New', monospace;
+    color: #ccc; gap: 10px;
+  }
+  h1 { color: #f0b429; font-size: 20px; letter-spacing: 3px; margin-top: 12px; }
+  #hud { display: flex; gap: 32px; font-size: 15px; }
+  #hud b { color: #f0b429; }
+  #statusMsg { color: #aaa; }
+  #statusMsg.unlocked { color: #2ecc71; }
+  canvas { border: 2px solid #2a2a4a; display: block; }
+  #hint { font-size: 12px; color: #444; }
+  #back { font-size: 12px; color: #444; margin-bottom: 10px; }
+  #back a { color: #555; text-decoration: none; }
+  #back a:hover { color: #888; }
+
+  /* D-pad */
+  #dpad {
+    display: grid;
+    grid-template-columns: repeat(3, 64px);
+    grid-template-rows: repeat(3, 64px);
+    gap: 6px;
+    margin: 6px 0;
+  }
+  #btn-up    { grid-column: 2; grid-row: 1; }
+  #btn-left  { grid-column: 1; grid-row: 2; }
+  #btn-right { grid-column: 3; grid-row: 2; }
+  #btn-down  { grid-column: 2; grid-row: 3; }
+  #dpad button {
+    width: 64px; height: 64px;
+    background: rgba(255,255,255,0.06);
+    border: 2px solid #2e2e50;
+    border-radius: 12px;
+    color: #666;
+    font-size: 22px;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+    transition: background 0.08s, border-color 0.08s, color 0.08s;
+  }
+  #dpad button.pressed {
+    background: rgba(240,180,41,0.18);
+    border-color: #f0b429;
+    color: #f0b429;
+  }
+
+  /* Win / Game Over overlays */
+  .overlay {
+    display: none;
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+    background: rgba(10,10,20,0.93);
+    border: 2px solid #f0b429;
+    border-radius: 14px;
+    padding: 36px 48px;
+    z-index: 10;
+    text-align: center;
+  }
+  .overlay.active { display: flex; }
+  .overlay h2 { font-size: 28px; letter-spacing: 3px; }
+  .overlay p  { font-size: 15px; color: #aaa; }
+  .overlay button {
+    margin-top: 6px;
+    padding: 10px 32px;
+    background: rgba(240,180,41,0.12);
+    border: 2px solid #f0b429;
+    border-radius: 8px;
+    color: #f0b429;
+    font-family: 'Courier New', monospace;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+  .overlay button:hover { background: rgba(240,180,41,0.28); }
+  #gameOverOverlay { border-color: #e74c3c; }
+  #gameOverOverlay button { border-color: #e74c3c; color: #e74c3c; background: rgba(231,76,60,0.1); }
+  #gameOverOverlay button:hover { background: rgba(231,76,60,0.25); }
