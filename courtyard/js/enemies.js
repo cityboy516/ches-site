@@ -10,17 +10,6 @@ function playerInCone(e) {
   return hasLineOfSight(cx, cy, px, py);
 }
 
-function killPlayer() {
-  lives--;
-  document.getElementById('livesCount').textContent = Math.max(0, lives);
-  if (lives < 0) {
-    gameOver = true;
-    document.getElementById('gameOverOverlay').classList.add('active');
-  } else {
-    respawnPlayer(currentLevel);
-  }
-}
-
 function updateEnemies(dt) {
   for (const e of enemies) {
     if (e.mode === 'patrol') {

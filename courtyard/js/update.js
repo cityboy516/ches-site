@@ -1,16 +1,22 @@
 function killPlayer() {
+  if (deathTimer > 0 || gameOver) return;
   lives--;
   document.getElementById('livesCount').textContent = Math.max(0, lives);
   if (lives < 0) {
     gameOver = true;
     document.getElementById('gameOverOverlay').classList.add('active');
   } else {
-    respawnPlayer(currentLevel);
+    deathTimer = DEATH_PAUSE;
   }
 }
 
 function update(dt) {
   if (player.won || gameOver) return;
+  if (deathTimer > 0) {
+    deathTimer -= dt;
+    if (deathTimer <= 0) respawnPlayer(currentLevel);
+    return;
+  }
 
   let dx = 0, dy = 0;
   if (keys['ArrowLeft'])  { dx = -player.speed * dt; player.facing = 'left'; }

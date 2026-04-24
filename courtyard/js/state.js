@@ -3,6 +3,8 @@ let currentLevel = 0;
 let lives = 3;
 let gameOver = false;
 let enemies = [];
+let deathTimer = 0;
+const DEATH_PAUSE = 38;
 
 const player = {
   x: 46, y: 46,
@@ -24,6 +26,7 @@ function countTiles(val) {
 
 function loadLevel(n) {
   currentLevel = n;
+  deathTimer = 0;
   // Deep-copy map so collected coins / opened exits don't persist across respawns
   map = levels[n].map.map(row => [...row]);
   ROWS = map.length;
@@ -62,6 +65,8 @@ function loadLevel(n) {
 }
 
 function respawnPlayer(n) {
+  deathTimer = 0;
+
   // Preserve map state (collected coins, opened exits, opened gates) and player.coins/keys
   player.x = levels[n].playerStart.x;
   player.y = levels[n].playerStart.y;

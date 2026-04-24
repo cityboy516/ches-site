@@ -7,8 +7,16 @@
     font-family: 'Courier New', monospace;
     color: #ccc; gap: 10px;
   }
-  h1 { color: #f0b429; font-size: 20px; letter-spacing: 3px; margin-top: 12px; }
-  #hud { display: flex; gap: 32px; font-size: 15px; }
+  h1 { color: #f0b429; font-size: 20px; letter-spacing: 3px; margin-top: 12px; text-align: center; }
+  #hud {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px 32px;
+    max-width: min(800px, calc(100vw - 16px));
+    font-size: 15px;
+    text-align: center;
+  }
   #hud b { color: #f0b429; }
   #statusMsg { color: #aaa; }
   #statusMsg.unlocked { color: #2ecc71; }
@@ -85,3 +93,20 @@
   #gameOverOverlay { border-color: #e74c3c; }
   #gameOverOverlay button { border-color: #e74c3c; color: #e74c3c; background: rgba(231,76,60,0.1); }
   #gameOverOverlay button:hover { background: rgba(231,76,60,0.25); }
+
+  @media (max-height: 720px), (max-width: 520px) {
+    body { gap: 6px; justify-content: flex-start; }
+    h1 { font-size: 16px; letter-spacing: 1.5px; margin-top: 8px; }
+    #hud { gap: 4px 14px; font-size: 12px; }
+    #hint, #back { font-size: 11px; }
+    #dpad {
+      grid-template-columns: repeat(3, 54px);
+      grid-template-rows: repeat(3, 54px);
+      gap: 5px;
+      margin: 2px 0;
+    }
+    #dpad button {
+      width: 54px;
+      height: 54px;
+    }
+  }
