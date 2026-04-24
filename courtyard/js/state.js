@@ -1,4 +1,4 @@
-let map = [], ROWS, COLS, TOTAL_COINS;
+let map = [], ROWS, COLS, TOTAL_COINS, TOTAL_KEYS;
 let currentLevel = 0;
 let lives = 3;
 let gameOver = false;
@@ -10,9 +10,17 @@ const player = {
   speed: 3,
   facing: 'right',
   coins: 0,
+  keys: 0,
   won: false,
 };
 
+function countTiles(val) {
+  let total = 0;
+  for (let r = 0; r < ROWS; r++)
+    for (let c = 0; c < COLS; c++)
+      if (map[r][c] === val) total++;
+  return total;
+}
 
 function loadLevel(n) {
   currentLevel = n;
@@ -21,11 +29,13 @@ function loadLevel(n) {
   ROWS = map.length;
   COLS = map[0].length;
   TOTAL_COINS = levels[n].totalCoins;
+  TOTAL_KEYS = countTiles(6);
 
   // Reset player
   player.x = levels[n].playerStart.x;
   player.y = levels[n].playerStart.y;
   player.coins = 0;
+  player.keys = 0;
   player.won = false;
   player.facing = 'right';
 
@@ -37,6 +47,9 @@ function loadLevel(n) {
   document.getElementById('coinCount').textContent = '0';
   document.getElementById('coinTotal').textContent = TOTAL_COINS;
   document.getElementById('livesCount').textContent = lives;
+  document.getElementById('keyCount').textContent = '0';
+  document.getElementById('keyTotal').textContent = TOTAL_KEYS;
+  document.getElementById('keyHud').style.display = TOTAL_KEYS > 0 ? '' : 'none';
   const status = document.getElementById('statusMsg');
   status.textContent = 'Find all ' + TOTAL_COINS + ' coins to unlock the exit';
   status.classList.remove('unlocked');

@@ -9,8 +9,8 @@ function hitsWall(x, y, w, h) {
   for (let r = r0; r <= r1; r++)
     for (let c = c0; c <= c1; c++) {
       const t = tile(r, c);
-      // 1=wall, 3=locked exit are solid. Fire (5) is passable — it kills, not blocks.
-      if (t === 1 || t === 3) return true;
+      // 1=wall, 3=locked exit, and 7=key gate are solid. Fire (5) kills, not blocks.
+      if (t === 1 || t === 3 || t === 7) return true;
     }
   return false;
 }

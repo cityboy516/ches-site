@@ -65,6 +65,25 @@ function drawMap() {
           ctx.fillStyle = 'rgba(255,220,100,0.55)';
           ctx.beginPath(); ctx.arc(x + T / 2, y + T / 2, 5, 0, Math.PI * 2); ctx.fill();
           ctx.shadowBlur = 0; // always reset — glow bleeds into adjacent tiles if left set
+        } else if (t === 6) {
+          const bob = Math.sin(tick * 0.08 + c) * 2;
+          ctx.save();
+          ctx.translate(x + T / 2, y + T / 2 + bob);
+          ctx.shadowColor = '#f0b429'; ctx.shadowBlur = 12;
+          ctx.strokeStyle = '#f0b429'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+          ctx.beginPath(); ctx.arc(-5, -3, 6, 0, Math.PI * 2); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(1, -3); ctx.lineTo(12, -3); ctx.lineTo(12, 4); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(7, -3); ctx.lineTo(7, 2); ctx.stroke();
+          ctx.shadowBlur = 0;
+          ctx.restore();
+        } else if (t === 7) {
+          ctx.fillStyle = '#102a43'; ctx.fillRect(x + 4, y + 4, T - 8, T - 8);
+          ctx.strokeStyle = '#3498db'; ctx.lineWidth = 2; ctx.strokeRect(x + 4, y + 4, T - 8, T - 8);
+          ctx.fillStyle = '#8fd3ff';
+          for (let i = 0; i < 4; i++) ctx.fillRect(x + 9 + i * 7, y + 7, 3, T - 14);
+          ctx.font = 'bold 9px Courier New';
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText('GATE', x + T / 2, y + T / 2);
         }
       }
     }

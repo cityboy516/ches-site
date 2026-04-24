@@ -25,6 +25,27 @@ function update(dt) {
 
   updateEnemies(dt);
 
+  // Key collection — opens key gates in this level
+  const key = touching(player.x, player.y, player.w, player.h, 6);
+  if (key) {
+    map[key.r][key.c] = 0;
+    player.keys++;
+    document.getElementById('keyCount').textContent = player.keys;
+    if (player.keys >= TOTAL_KEYS) {
+      for (let r = 0; r < ROWS; r++)
+        for (let c = 0; c < COLS; c++)
+          if (map[r][c] === 7) map[r][c] = 0;
+      const el = document.getElementById('statusMsg');
+      if (player.coins >= TOTAL_COINS) {
+        el.textContent = 'Key found — gate opened. Reach the exit!';
+        el.classList.add('unlocked');
+      } else {
+        el.textContent = 'Key found — gate opened. Collect all ' + TOTAL_COINS + ' coins.';
+        el.classList.remove('unlocked');
+      }
+    }
+  }
+
   // Coin collection
   const coin = touching(player.x, player.y, player.w, player.h, 2);
   if (coin) {
@@ -36,8 +57,13 @@ function update(dt) {
         for (let c = 0; c < COLS; c++)
           if (map[r][c] === 3) map[r][c] = 4;
       const el = document.getElementById('statusMsg');
-      el.textContent = '✓ Exit unlocked — reach the door!';
-      el.classList.add('unlocked');
+      if (TOTAL_KEYS > 0 && player.keys < TOTAL_KEYS) {
+        el.textContent = 'Exit unlocked — find the key to open the gate.';
+        el.classList.remove('unlocked');
+      } else {
+        el.textContent = '✓ Exit unlocked — reach the door!';
+        el.classList.add('unlocked');
+      }
     }
   }
 
