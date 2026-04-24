@@ -4,8 +4,17 @@ const controlsToggle = document.getElementById('controlsToggle');
 const dpad = document.getElementById('dpad');
 let controlsVisible = false;
 
+function viewportSize() {
+  const vv = window.visualViewport;
+  return {
+    w: vv ? vv.width : window.innerWidth,
+    h: vv ? vv.height : window.innerHeight,
+  };
+}
+
 function shouldPlaceControlsSide() {
-  return window.innerWidth > window.innerHeight * 1.2 && window.innerWidth >= 640;
+  const { w, h } = viewportSize();
+  return w > h * 1.1 && w >= 520;
 }
 
 function applyControlsLayout() {
@@ -21,10 +30,11 @@ function applyControlsLayout() {
 
 function scaleCanvas() {
   applyControlsLayout();
+  const { w, h } = viewportSize();
   const sideControls = document.body.classList.contains('controls-side');
   const stackedControls = !sideControls;
   const sideControlsWidth = sideControls ? controlsPanel.offsetWidth + 14 : 0;
-  const maxW = Math.min(800, window.innerWidth - sideControlsWidth - 12);
+  const maxW = Math.min(800, w - sideControlsWidth - 12);
   const verticalChrome = [
     document.getElementById('levelTitle'),
     document.getElementById('hud'),
@@ -33,12 +43,17 @@ function scaleCanvas() {
     document.getElementById('build'),
   ].reduce((total, el) => total + (el ? el.offsetHeight : 0), 0);
   const controlsHeight = stackedControls ? controlsPanel.offsetHeight + 10 : 0;
-  const maxH = Math.min(600, window.innerHeight - verticalChrome - controlsHeight - 46);
+  const maxH = Math.min(600, h - verticalChrome - controlsHeight - 46);
   const scale = Math.max(0.3, Math.min(maxW / 800, maxH / 600));
   canvas.style.width  = Math.round(800 * scale) + 'px';
   canvas.style.height = Math.round(600 * scale) + 'px';
 }
 window.addEventListener('resize', scaleCanvas);
+window.addEventListener('orientationchange', () => {
+  setTimeout(scaleCanvas, 80);
+  setTimeout(scaleCanvas, 300);
+});
+if (window.visualViewport) window.visualViewport.addEventListener('resize', scaleCanvas);
 controlsToggle.addEventListener('click', () => {
   controlsVisible = !controlsVisible;
   if (!controlsVisible) releaseDpadKeys();
