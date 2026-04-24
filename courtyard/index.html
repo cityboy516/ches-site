@@ -256,14 +256,14 @@ const levels = [
     enemies: [
       // Guard A — upper crossing patrol
       { ...wp(3,2),  w:28, h:28, speed:1.45, path:[wp(3,2),  wp(3,16)] },
-      // Guard B — centre vertical patrol
-      { ...wp(2,9),  w:28, h:28, speed:1.25, path:[wp(2,9),  wp(12,9)] },
+      // Guard B — short centre vertical patrol
+      { ...wp(1,8),  w:28, h:28, speed:1.25, path:[wp(1,8),  wp(5,8)] },
       // Guard C — lower fire corridor patrol
       { ...wp(11,3), w:28, h:28, speed:1.35, path:[wp(11,3), wp(11,15)] },
       // Watcher D — right-side cone guard
-      { ...wp(5,17), w:28, h:28, speed:1.05, chaseSpeed:2.35, path:[wp(5,17), wp(9,17)] },
+      { ...wp(1,18), w:28, h:28, speed:1.05, chaseSpeed:2.35, path:[wp(1,18), wp(12,18)] },
       // Watcher E — exit approach cone guard
-      { ...wp(13,10), w:28, h:28, speed:1.05, chaseSpeed:2.35, path:[wp(13,10), wp(13,16)] },
+      { ...wp(13,8), w:28, h:28, speed:1.05, chaseSpeed:2.35, path:[wp(13,8), wp(13,14)] },
     ],
     map: [
       [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
@@ -372,6 +372,19 @@ function overlapsPlayer(e) {
          player.y < e.y + e.h && player.y + player.h > e.y;
 }
 
+function moveEntity(e, mx, my) {
+  let moved = false;
+  if (!hitsWall(e.x + mx, e.y, e.w, e.h)) {
+    e.x += mx;
+    moved = true;
+  }
+  if (!hitsWall(e.x, e.y + my, e.w, e.h)) {
+    e.y += my;
+    moved = true;
+  }
+  return moved;
+}
+
 function playerInCone(e) {
   const cx = e.x + e.w / 2, cy = e.y + e.h / 2;
   const px = player.x + player.w / 2, py = player.y + player.h / 2;
@@ -405,8 +418,7 @@ function updateEnemies(dt) {
         e.x = target.x; e.y = target.y;
         e.pathIndex = (e.pathIndex + 1) % e.path.length;
       } else {
-        e.x += (ddx / dist) * e.speed * dt;
-        e.y += (ddy / dist) * e.speed * dt;
+        moveEntity(e, (ddx / dist) * e.speed * dt, (ddy / dist) * e.speed * dt);
         e.facing = Math.abs(ddx) > Math.abs(ddy)
           ? (ddx > 0 ? 'right' : 'left')
           : (ddy > 0 ? 'down' : 'up');
@@ -424,8 +436,7 @@ function updateEnemies(dt) {
         const spd = (e.chaseSpeed || e.speed * 2) * dt;
         const mx = (dx / dist) * spd, my = (dy / dist) * spd;
         // Apply x and y independently for smooth wall-sliding
-        if (!hitsWall(e.x + mx, e.y,      e.w, e.h)) e.x += mx;
-        if (!hitsWall(e.x,      e.y + my, e.w, e.h)) e.y += my;
+        moveEntity(e, mx, my);
         e.facing = Math.abs(dx) > Math.abs(dy)
           ? (dx > 0 ? 'right' : 'left')
           : (dy > 0 ? 'down' : 'up');
