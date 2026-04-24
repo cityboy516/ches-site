@@ -45,3 +45,18 @@ function moveEntity(e, mx, my, others) {
   if (!blocked(e.x, e.y + my)) { e.y += my; moved = true; }
   return moved;
 }
+
+function hasLineOfSight(x0, y0, x1, y1) {
+  const dx = x1 - x0, dy = y1 - y0;
+  const dist = Math.hypot(dx, dy);
+  if (dist < 1) return true;
+  const nx = dx / dist, ny = dy / dist;
+  const step = T / 4;
+  const steps = Math.floor(dist / step);
+  for (let i = 1; i <= steps; i++) {
+    const px = x0 + nx * step * i, py = y0 + ny * step * i;
+    const tv = tile(Math.floor(py / T), Math.floor(px / T));
+    if (tv === 1 || tv === 3 || tv === 7) return false;
+  }
+  return true;
+}

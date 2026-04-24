@@ -90,6 +90,25 @@ function drawMap() {
   }
 }
 
+function castConePolygon(cx, cy, faceAngle, range, halfAngle) {
+  const RAY_COUNT = 60;
+  const step = T / 8; // 5px steps — fine enough for clean wall edges
+  const maxSteps = Math.floor(range / step);
+  const pts = [[cx, cy]];
+  for (let i = 0; i <= RAY_COUNT; i++) {
+    const angle = faceAngle - halfAngle + (i / RAY_COUNT) * halfAngle * 2;
+    const rdx = Math.cos(angle), rdy = Math.sin(angle);
+    let hitDist = range;
+    for (let j = 1; j <= maxSteps; j++) {
+      const d = step * j;
+      const tv = tile(Math.floor((cy + rdy * d) / T), Math.floor((cx + rdx * d) / T));
+      if (tv === 1 || tv === 3 || tv === 7) { hitDist = step * (j - 1); break; }
+    }
+    pts.push([cx + rdx * hitDist, cy + rdy * hitDist]);
+  }
+  return pts;
+}
+
 function drawEnemies() {
   for (const e of enemies) {
     const { x, y, w, h, facing } = e;
@@ -98,9 +117,10 @@ function drawEnemies() {
     if (e.chaseSpeed !== undefined) {
       const faceAngle = { right: 0, left: Math.PI, up: -Math.PI / 2, down: Math.PI / 2 }[facing];
       const cx = x + w / 2, cy = y + h / 2;
+      const pts = castConePolygon(cx, cy, faceAngle, CONE_RANGE, CONE_HALF_ANGLE);
       ctx.beginPath();
-      ctx.moveTo(cx, cy);
-      ctx.arc(cx, cy, CONE_RANGE, faceAngle - CONE_HALF_ANGLE, faceAngle + CONE_HALF_ANGLE);
+      ctx.moveTo(pts[0][0], pts[0][1]);
+      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
       ctx.closePath();
       ctx.fillStyle = e.mode === 'chase'
         ? 'rgba(231,76,60,0.18)'    // red when chasing

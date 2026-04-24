@@ -6,7 +6,8 @@ function playerInCone(e) {
   const faceAngle = { right: 0, left: Math.PI, up: -Math.PI / 2, down: Math.PI / 2 }[e.facing];
   let diff = Math.abs(Math.atan2(dy, dx) - faceAngle);
   if (diff > Math.PI) diff = 2 * Math.PI - diff; // normalise — prevents wrap-around false negatives
-  return diff <= CONE_HALF_ANGLE;
+  if (diff > CONE_HALF_ANGLE) return false;
+  return hasLineOfSight(cx, cy, px, py);
 }
 
 function killPlayer() {
