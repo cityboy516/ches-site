@@ -11,7 +11,7 @@ function playerInCone(e) {
 
 function killPlayer() {
   lives--;
-  document.getElementById('livesCount').textContent = lives;
+  document.getElementById('livesCount').textContent = Math.max(0, lives);
   if (lives < 0) {
     gameOver = true;
     document.getElementById('gameOverOverlay').classList.add('active');

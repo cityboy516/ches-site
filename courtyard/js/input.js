@@ -34,12 +34,20 @@ window.addEventListener('keydown', e => {
   }
   if (!devModeEnabled) return;
   if (e.key === 'n' || e.key === 'N') {
-    player.won = false; gameOver = false; lives = 3;
+    player.won = false; gameOver = false;
     loadLevel(Math.min(currentLevel + 1, levels.length - 1));
   }
   if (e.key === 'b' || e.key === 'B') {
-    player.won = false; gameOver = false; lives = 3;
+    player.won = false; gameOver = false;
     loadLevel(Math.max(currentLevel - 1, 0));
+  }
+  if (e.key === '+' || e.key === '=') {
+    lives++;
+    document.getElementById('livesCount').textContent = lives;
+  }
+  if (e.key === '-' || e.key === '_') {
+    lives = Math.max(0, lives - 1);
+    document.getElementById('livesCount').textContent = lives;
   }
 });
 // ============================================================
