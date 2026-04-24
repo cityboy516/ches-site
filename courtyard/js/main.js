@@ -5,7 +5,7 @@ const dpad = document.getElementById('dpad');
 let controlsVisible = false;
 
 function shouldPlaceControlsSide() {
-  return window.innerWidth > window.innerHeight * 1.12 && window.innerWidth >= 840;
+  return window.innerWidth > window.innerHeight * 1.2 && window.innerWidth >= 640;
 }
 
 function applyControlsLayout() {
@@ -13,7 +13,8 @@ function applyControlsLayout() {
   document.body.classList.toggle('controls-side', side);
   document.body.classList.toggle('controls-stack', !side);
   document.body.classList.toggle('controls-visible', controlsVisible);
-  dpad.hidden = !controlsVisible;
+  dpad.hidden = !controlsVisible && !side;
+  dpad.setAttribute('aria-hidden', controlsVisible ? 'false' : 'true');
   controlsToggle.setAttribute('aria-expanded', controlsVisible ? 'true' : 'false');
   controlsToggle.textContent = controlsVisible ? 'Hide Controls' : 'Controls';
 }

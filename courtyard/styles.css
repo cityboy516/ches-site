@@ -51,6 +51,8 @@
   }
   body.controls-side #controlsPanel {
     min-width: 206px;
+    min-height: 238px;
+    justify-content: flex-start;
   }
   #controlsToggle {
     padding: 8px 16px;
@@ -79,6 +81,10 @@
     margin: 0;
   }
   #dpad[hidden] { display: none; }
+  body.controls-side:not(.controls-visible) #dpad {
+    visibility: hidden;
+    pointer-events: none;
+  }
   #btn-up    { grid-column: 2; grid-row: 1; }
   #btn-left  { grid-column: 1; grid-row: 2; }
   #btn-right { grid-column: 3; grid-row: 2; }
