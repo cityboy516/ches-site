@@ -32,10 +32,20 @@ function updateEnemies(dt) {
         e.x = target.x; e.y = target.y;
         e.pathIndex = (e.pathIndex + 1) % e.path.length;
       } else {
-        moveEntity(e, (ddx / dist) * e.speed * dt, (ddy / dist) * e.speed * dt, enemies);
+        const moved = moveEntity(e, (ddx / dist) * e.speed * dt, (ddy / dist) * e.speed * dt, enemies);
         e.facing = Math.abs(ddx) > Math.abs(ddy)
           ? (ddx > 0 ? 'right' : 'left')
           : (ddy > 0 ? 'down' : 'up');
+        // Stuck detection: if completely blocked for ~0.5s, skip to next waypoint
+        if (!moved) {
+          e.stuckFrames = (e.stuckFrames || 0) + 1;
+          if (e.stuckFrames > 30) {
+            e.pathIndex = (e.pathIndex + 1) % e.path.length;
+            e.stuckFrames = 0;
+          }
+        } else {
+          e.stuckFrames = 0;
+        }
       }
       // Only cone-aware enemies (those with chaseSpeed) can switch to chase
       if (e.chaseSpeed && playerInCone(e)) e.mode = 'chase';
