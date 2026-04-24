@@ -4,10 +4,10 @@ levels.push(
     totalCoins: 8,
     playerStart: { x: 46, y: 46 },
     enemies: [
-      // Guard A — watches the approach to the key
-      { ...wp(5,9), w:28, h:28, speed:1.25, path:[wp(5,9), wp(7,9)] },
-      // Guard B — patrols the safer route after the gate
-      { ...wp(10,9), w:28, h:28, speed:1.25, path:[wp(10,9), wp(10,13)] },
+      // Guard A — pressures the key room without blocking the only route in
+      { ...wp(5,11), w:28, h:28, speed:1.25, path:[wp(5,11), wp(5,14)] },
+      // Guard B — patrols the longer route around the gate
+      { ...wp(12,8), w:28, h:28, speed:1.35, path:[wp(12,8), wp(12,11)] },
       // Watcher C — guards the final coin and exit approach
       { ...wp(1,18), w:28, h:28, speed:1.05, chaseSpeed:2.35, path:[wp(1,18), wp(11,18)] },
     ],
@@ -25,7 +25,7 @@ levels.push(
       [1,1,1,0,1,1,1,0,1,0,0,0,0,0,2,1,0,1,0,1],
       [1,2,0,0,0,0,1,0,1,1,1,1,1,0,0,1,0,0,0,1],
       [1,0,1,1,1,0,1,0,0,0,0,0,1,0,1,1,1,1,1,1],
-      [1,0,0,0,0,0,0,0,2,1,0,0,0,0,0,2,0,7,3,1],
+      [1,0,0,0,0,0,0,0,2,1,0,5,0,0,0,2,0,0,3,1],
       [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
     ],
   },

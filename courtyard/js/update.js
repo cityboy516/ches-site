@@ -58,7 +58,7 @@ function update(dt) {
           if (map[r][c] === 3) map[r][c] = 4;
       const el = document.getElementById('statusMsg');
       if (TOTAL_KEYS > 0 && player.keys < TOTAL_KEYS) {
-        el.textContent = 'Exit unlocked — find the key to open the gate.';
+        el.textContent = 'Exit unlocked — reach the door, or find the key shortcut.';
         el.classList.remove('unlocked');
       } else {
         el.textContent = '✓ Exit unlocked — reach the door!';
