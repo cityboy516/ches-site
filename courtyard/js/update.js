@@ -5,6 +5,7 @@ function killPlayer() {
   if (lives < 0) {
     gameOver = true;
     document.getElementById('gameOverOverlay').classList.add('active');
+    document.getElementById('restartBtn').focus();
   } else {
     deathTimer = DEATH_PAUSE;
   }
@@ -81,6 +82,7 @@ function update(dt) {
       ? 'You completed the game!' : 'You made it through.';
     document.getElementById('nextBtn').textContent = isLast ? 'Play Again' : 'Next Level →';
     document.getElementById('winOverlay').classList.add('active');
+    document.getElementById('nextBtn').focus();
     return;
   }
 
