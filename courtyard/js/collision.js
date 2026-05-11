@@ -9,10 +9,20 @@ function hitsWall(x, y, w, h) {
   for (let r = r0; r <= r1; r++)
     for (let c = c0; c <= c1; c++) {
       const t = tile(r, c);
-      // 1=wall, 3=locked exit, and 7=key gate are solid. Fire (5) kills, not blocks.
+      // 1=wall, 3=locked exit, and 7=key gate are solid. Fire/water are passable hazards.
       if (t === 1 || t === 3 || t === 7) return true;
     }
   return false;
+}
+
+function touchingAny(x, y, w, h, val) {
+  const r0 = Math.floor(y / T),         r1 = Math.floor((y + h - 1) / T);
+  const c0 = Math.floor(x / T),         c1 = Math.floor((x + w - 1) / T);
+  let touched = 0;
+  for (let r = r0; r <= r1; r++)
+    for (let c = c0; c <= c1; c++)
+      if (tile(r, c) === val) touched++;
+  return touched > 0;
 }
 
 function touching(x, y, w, h, val) {
@@ -37,7 +47,7 @@ function overlapsEntity(ax, ay, aw, ah, b) {
 function moveEntity(e, mx, my, others) {
   const blocked = (x, y) => {
     if (hitsWall(x, y, e.w, e.h)) return true;
-    if (others) for (const o of others) if (o !== e && overlapsEntity(x, y, e.w, e.h, o)) return true;
+    if (others) for (const o of others) if (o !== e && !o.dead && overlapsEntity(x, y, e.w, e.h, o)) return true;
     return false;
   };
   let moved = false;

@@ -11,6 +11,16 @@ function killPlayer() {
   }
 }
 
+function updatePlayerAir(dt) {
+  player.inWater = touchingAny(player.x, player.y, player.w, player.h, TILE_WATER);
+  if (player.inWater) {
+    player.air = Math.max(0, player.air - PLAYER_AIR_DRAIN * dt);
+    if (player.air <= 0) killPlayer();
+  } else {
+    player.air = Math.min(1, player.air + PLAYER_AIR_RESTORE * dt);
+  }
+}
+
 function update(dt) {
   if (player.won || gameOver) return;
   if (deathTimer > 0) {
@@ -19,11 +29,13 @@ function update(dt) {
     return;
   }
 
+  player.inWater = touchingAny(player.x, player.y, player.w, player.h, TILE_WATER);
+  const moveSpeed = player.speed * (player.inWater ? WATER_SPEED_MULT : 1);
   let dx = 0, dy = 0;
-  if (keys['ArrowLeft'])  { dx = -player.speed * dt; player.facing = 'left'; }
-  if (keys['ArrowRight']) { dx =  player.speed * dt; player.facing = 'right'; }
-  if (keys['ArrowUp'])    { dy = -player.speed * dt; player.facing = 'up'; }
-  if (keys['ArrowDown'])  { dy =  player.speed * dt; player.facing = 'down'; }
+  if (keys['ArrowLeft'])  { dx = -moveSpeed * dt; player.facing = 'left'; }
+  if (keys['ArrowRight']) { dx =  moveSpeed * dt; player.facing = 'right'; }
+  if (keys['ArrowUp'])    { dy = -moveSpeed * dt; player.facing = 'up'; }
+  if (keys['ArrowDown'])  { dy =  moveSpeed * dt; player.facing = 'down'; }
 
   const nx = player.x + dx;
   if (!hitsWall(nx, player.y, player.w, player.h)) player.x = nx;
@@ -31,6 +43,8 @@ function update(dt) {
   if (!hitsWall(player.x, ny, player.w, player.h)) player.y = ny;
 
   updateEnemies(dt);
+  updatePlayerAir(dt);
+  if (deathTimer > 0 || gameOver) return;
 
   // Key collection — opens key gates in this level
   const key = touching(player.x, player.y, player.w, player.h, 6);
@@ -42,14 +56,7 @@ function update(dt) {
       for (let r = 0; r < ROWS; r++)
         for (let c = 0; c < COLS; c++)
           if (map[r][c] === 7) map[r][c] = 0;
-      const el = document.getElementById('statusMsg');
-      if (player.coins >= TOTAL_COINS) {
-        el.textContent = 'Key found — gate opened. Reach the exit!';
-        el.classList.add('unlocked');
-      } else {
-        el.textContent = 'Key found — gate opened. Collect all ' + TOTAL_COINS + ' coins.';
-        el.classList.remove('unlocked');
-      }
+      tryUnlockExit();
     }
   }
 
@@ -59,19 +66,7 @@ function update(dt) {
     map[coin.r][coin.c] = 0;
     player.coins++;
     document.getElementById('coinCount').textContent = player.coins;
-    if (player.coins >= TOTAL_COINS) {
-      for (let r = 0; r < ROWS; r++)
-        for (let c = 0; c < COLS; c++)
-          if (map[r][c] === 3) map[r][c] = 4;
-      const el = document.getElementById('statusMsg');
-      if (TOTAL_KEYS > 0 && player.keys < TOTAL_KEYS) {
-        el.textContent = 'Exit unlocked — reach the door, or find the key shortcut.';
-        el.classList.remove('unlocked');
-      } else {
-        el.textContent = '✓ Exit unlocked — reach the door!';
-        el.classList.add('unlocked');
-      }
-    }
+    tryUnlockExit();
   }
 
   // Exit reached
@@ -86,15 +81,15 @@ function update(dt) {
     return;
   }
 
-  // Fire death — tile 5 is passable but lethal
-  if (touching(player.x, player.y, player.w, player.h, 5)) {
+  // Fire death — passable but lethal
+  if (touching(player.x, player.y, player.w, player.h, TILE_FIRE)) {
     killPlayer();
     return;
   }
 
   // Enemy collision — AABB overlap with any guard
   for (const enemy of enemies) {
-    if (overlapsPlayer(enemy)) {
+    if (!enemy.dead && overlapsPlayer(enemy)) {
       killPlayer();
       return; // prevent further checks on now-reset state
     }

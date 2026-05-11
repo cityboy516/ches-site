@@ -1,5 +1,13 @@
 let tick = 0;
 
+function mixRgb(from, to, amount) {
+  const t = Math.max(0, Math.min(1, amount));
+  const r = Math.round(from[0] + (to[0] - from[0]) * t);
+  const g = Math.round(from[1] + (to[1] - from[1]) * t);
+  const b = Math.round(from[2] + (to[2] - from[2]) * t);
+  return `rgb(${r},${g},${b})`;
+}
+
 function roundRect(x, y, w, h, r) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
@@ -92,7 +100,7 @@ function drawMap() {
           ctx.fillRect(x + 10, y + T - 8, T - 20, 3);
           ctx.shadowBlur = 0;
 
-        } else if (t === 5) {
+        } else if (t === TILE_FIRE) {
           const flicker = Math.sin(tick * 0.14 + c * 1.7 + r * 2.3);
           const sway = Math.sin(tick * 0.09 + c * 2.1);
           ctx.fillStyle = '#321515';
@@ -136,6 +144,24 @@ function drawMap() {
           ctx.fillRect(-16, 8, 32, 5);
           ctx.restore();
           ctx.shadowBlur = 0;
+        } else if (t === TILE_WATER) {
+          const wave = Math.sin(tick * 0.08 + c * 1.4 + r * 0.8);
+          ctx.fillStyle = '#0b2d4d';
+          ctx.fillRect(x + 2, y + 2, T - 4, T - 4);
+          ctx.fillStyle = `rgba(52,152,219,${0.32 + 0.1 * wave})`;
+          ctx.fillRect(x + 4, y + 4, T - 8, T - 8);
+          ctx.strokeStyle = 'rgba(143,211,255,0.55)';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(x + 6, y + 15 + wave * 2);
+          ctx.quadraticCurveTo(x + 16, y + 9 - wave * 2, x + 26, y + 15 + wave * 2);
+          ctx.quadraticCurveTo(x + 32, y + 19 + wave * 2, x + 36, y + 15);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(x + 5, y + 28 - wave);
+          ctx.quadraticCurveTo(x + 15, y + 22 + wave, x + 25, y + 28 - wave);
+          ctx.quadraticCurveTo(x + 31, y + 32 - wave, x + 35, y + 28);
+          ctx.stroke();
         } else if (t === 6) {
           const bob = Math.sin(tick * 0.08 + c) * 2;
           ctx.save();
@@ -182,12 +208,15 @@ function castConePolygon(cx, cy, faceAngle, range, halfAngle) {
 
 function drawEnemies() {
   for (const e of enemies) {
+    const deathProgress = e.dead ? Math.min(1, (e.deathTimer || 0) / ENEMY_DEATH_ANIM_FRAMES) : 0;
+    if (e.dead && deathProgress >= 1) continue;
     const { x, y, w, h, facing } = e;
     const isWatcher = e.chaseSpeed !== undefined;
     const isChasing = e.mode === 'chase';
+    const waterTint = 1 - (e.air ?? 1);
 
     // Vision cone — only for cone-aware enemies (those with chaseSpeed)
-    if (isWatcher) {
+    if (isWatcher && !e.dead) {
       const faceAngle = { right: 0, left: Math.PI, up: -Math.PI / 2, down: Math.PI / 2 }[facing];
       const cx = x + w / 2, cy = y + h / 2;
       const pts = castConePolygon(cx, cy, faceAngle, CONE_RANGE, CONE_HALF_ANGLE);
@@ -201,6 +230,17 @@ function drawEnemies() {
       ctx.fill();
     }
 
+    ctx.save();
+    if (e.dead) {
+      const fall = deathProgress * deathProgress;
+      const cx = x + w / 2, cy = y + h / 2;
+      ctx.globalAlpha = 1 - deathProgress * 0.85;
+      ctx.translate(cx + (e.deathFallDir || 1) * 55 * fall, cy + 24 * fall);
+      ctx.rotate((e.deathFallDir || 1) * Math.PI * 0.55 * fall);
+      ctx.scale(1, 1 - 0.35 * fall);
+      ctx.translate(-cx, -cy);
+    }
+
     // Drop shadow
     ctx.fillStyle = 'rgba(0,0,0,0.3)';
     ctx.beginPath();
@@ -209,8 +249,13 @@ function drawEnemies() {
 
     // Body
     roundRect(x, y, w, h, 5);
-    ctx.fillStyle = isWatcher ? '#33406f' : '#8e44ad'; ctx.fill();
-    ctx.strokeStyle = isChasing ? '#b84848' : (isWatcher ? '#20284f' : '#6c3483');
+    ctx.fillStyle = isWatcher
+      ? mixRgb([51, 64, 111], [24, 122, 191], waterTint)
+      : mixRgb([142, 68, 173], [24, 122, 191], waterTint);
+    ctx.fill();
+    ctx.strokeStyle = isChasing
+      ? '#b84848'
+      : (isWatcher ? mixRgb([32, 40, 79], [14, 86, 142], waterTint) : mixRgb([108, 52, 131], [14, 86, 142], waterTint));
     ctx.lineWidth = isChasing ? 3 : 2;
     ctx.stroke();
 
@@ -260,11 +305,19 @@ function drawEnemies() {
     ctx.lineTo(w / 2 - 7, 8);
     ctx.stroke();
     ctx.restore();
+    ctx.restore();
   }
 }
 
 function drawPlayer() {
   const { x, y, w, h, facing } = player;
+  const waterTint = 1 - player.air;
+  const faceAngle = {
+    right: 0,
+    down: Math.PI / 2,
+    up: -Math.PI / 2,
+    left: Math.PI,
+  }[facing];
 
   ctx.fillStyle = 'rgba(0,0,0,0.3)';
   ctx.beginPath();
@@ -272,18 +325,27 @@ function drawPlayer() {
   ctx.fill();
 
   roundRect(x, y, w, h, 5);
-  ctx.fillStyle = '#e74c3c'; ctx.fill();
-  ctx.strokeStyle = '#c0392b'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.fillStyle = '#e74c3c';
+  ctx.fill();
+  if (waterTint > 0) {
+    ctx.save();
+    roundRect(x, y, w, h, 5);
+    ctx.clip();
+    ctx.translate(x + w / 2, y + h / 2);
+    if (facing === 'left') {
+      ctx.rotate(Math.PI);
+    } else {
+      ctx.rotate(faceAngle);
+    }
+    ctx.fillStyle = '#268bd2';
+    ctx.fillRect(-w / 2, -h / 2, w * waterTint, h);
+    ctx.restore();
+  }
+  ctx.strokeStyle = mixRgb([192, 57, 43], [18, 83, 145], waterTint);
+  ctx.lineWidth = 2; ctx.stroke();
 
   roundRect(x + 3, y + 2, w - 6, 8, 3);
   ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.fill();
-
-  const faceAngle = {
-    right: 0,
-    down: Math.PI / 2,
-    up: -Math.PI / 2,
-    left: Math.PI,
-  }[facing];
 
   ctx.save();
   ctx.translate(x + w / 2, y + h / 2);
