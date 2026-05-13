@@ -15,13 +15,20 @@ function hitsWall(x, y, w, h) {
   return false;
 }
 
+// Returns true if tile t counts as val — handles combined water+coin tile
+function tileMatches(t, val) {
+  if (t === val) return true;
+  if (t === TILE_WATER_COIN && (val === TILE_WATER || val === 2)) return true;
+  return false;
+}
+
 function touchingAny(x, y, w, h, val) {
   const r0 = Math.floor(y / T),         r1 = Math.floor((y + h - 1) / T);
   const c0 = Math.floor(x / T),         c1 = Math.floor((x + w - 1) / T);
   let touched = 0;
   for (let r = r0; r <= r1; r++)
     for (let c = c0; c <= c1; c++)
-      if (tile(r, c) === val) touched++;
+      if (tileMatches(tile(r, c), val)) touched++;
   return touched > 0;
 }
 
@@ -30,7 +37,7 @@ function touching(x, y, w, h, val) {
   const c0 = Math.floor(x / T),         c1 = Math.floor((x + w - 1) / T);
   for (let r = r0; r <= r1; r++)
     for (let c = c0; c <= c1; c++)
-      if (tile(r, c) === val) return {r, c};
+      if (tileMatches(tile(r, c), val)) return {r, c};
   return null;
 }
 

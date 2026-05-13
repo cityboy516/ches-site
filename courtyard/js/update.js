@@ -63,7 +63,7 @@ function update(dt) {
   // Coin collection
   const coin = touching(player.x, player.y, player.w, player.h, 2);
   if (coin) {
-    map[coin.r][coin.c] = 0;
+    map[coin.r][coin.c] = (map[coin.r][coin.c] === TILE_WATER_COIN ? TILE_WATER : 0);
     player.coins++;
     document.getElementById('coinCount').textContent = player.coins;
     tryUnlockExit();

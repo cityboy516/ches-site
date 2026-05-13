@@ -7,6 +7,7 @@ const CONE_RANGE = 220;              // vision distance in pixels (~5.5 tiles)
 const CONE_HALF_ANGLE = Math.PI / 4; // 45° either side = 90° total cone
 const TILE_FIRE = 5;
 const TILE_WATER = 8;
+const TILE_WATER_COIN = 9; // water tile that also contains a coin
 const WATER_SPEED_MULT = 0.55;
 const PLAYER_AIR_DRAIN = 1 / (60 * 6);
 const PLAYER_AIR_RESTORE = 1 / (60 * 3);

@@ -144,7 +144,7 @@ function drawMap() {
           ctx.fillRect(-16, 8, 32, 5);
           ctx.restore();
           ctx.shadowBlur = 0;
-        } else if (t === TILE_WATER) {
+        } else if (t === TILE_WATER || t === TILE_WATER_COIN) {
           const wave = Math.sin(tick * 0.08 + c * 1.4 + r * 0.8);
           ctx.fillStyle = '#0b2d4d';
           ctx.fillRect(x + 2, y + 2, T - 4, T - 4);
@@ -162,6 +162,27 @@ function drawMap() {
           ctx.quadraticCurveTo(x + 15, y + 22 + wave, x + 25, y + 28 - wave);
           ctx.quadraticCurveTo(x + 31, y + 32 - wave, x + 35, y + 28);
           ctx.stroke();
+          if (t === TILE_WATER_COIN) {
+            const scale = 1 + 0.18 * Math.sin(tick * 0.07 + c * 0.9 + r * 0.7);
+            const sparkle = tick * 0.08 + c * 1.3 + r * 0.9;
+            ctx.save();
+            ctx.translate(x + T / 2, y + T / 2);
+            ctx.shadowColor = '#f0b429'; ctx.shadowBlur = 12;
+            ctx.fillStyle = '#f0b429';
+            ctx.beginPath(); ctx.arc(0, 0, 7 * scale, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#ffe066';
+            ctx.beginPath(); ctx.arc(-2, -2, 2.5 * scale, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(Math.cos(sparkle) * 8 - 3, Math.sin(sparkle) * 6);
+            ctx.lineTo(Math.cos(sparkle) * 8 + 3, Math.sin(sparkle) * 6);
+            ctx.moveTo(Math.cos(sparkle) * 8, Math.sin(sparkle) * 6 - 3);
+            ctx.lineTo(Math.cos(sparkle) * 8, Math.sin(sparkle) * 6 + 3);
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+            ctx.restore();
+          }
         } else if (t === 6) {
           const bob = Math.sin(tick * 0.08 + c) * 2;
           ctx.save();
