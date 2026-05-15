@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Courtyard — Level Editor</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: #1a1a1a;
+  color: #ddd;
+  font-family: monospace;
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+#sidebar {
+  width: 220px;
+  min-width: 220px;
+  background: #111;
+  border-right: 1px solid #333;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding: 12px;
+  gap: 14px;
+}
+
+#sidebar h1 {
+  font-size: 13px;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  border-bottom: 1px solid #333;
+  padding-bottom: 8px;
+}
+
+.section-label {
+  font-size: 10px;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 5px;
+}
+
+#palette {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.tile-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #1e1e1e;
+  border: 1px solid #333;
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+  color: #bbb;
+  font-family: monospace;
+  font-size: 11px;
+  text-align: left;
+}
+.tile-btn:hover { border-color: #555; color: #eee; }
+.tile-btn.active { border-color: #aaa; color: #fff; background: #2a2a2a; }
+
+.swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 2px;
+  border: 1px solid transparent;
+  flex-shrink: 0;
+}
+
+.tool-group { display: flex; flex-direction: column; gap: 3px; }
+
+.tool-btn {
+  background: #1e1e1e;
+  border: 1px solid #333;
+  border-radius: 4px;
+  padding: 5px 8px;
+  cursor: pointer;
+  color: #bbb;
+  font-family: monospace;
+  font-size: 11px;
+  text-align: left;
+  width: 100%;
+}
+.tool-btn:hover { border-color: #555; color: #eee; }
+.tool-btn.active { border-color: #aaa; color: #fff; background: #2a2a2a; }
+.tool-btn.danger { border-color: #622; }
+.tool-btn.danger:hover { border-color: #a44; color: #f88; }
+.tool-btn.success { border-color: #262; }
+.tool-btn.success:hover { border-color: #4a4; color: #8f8; }
+
+input[type="text"], select, textarea {
+  width: 100%;
+  background: #1e1e1e;
+  border: 1px solid #333;
+  border-radius: 4px;
+  color: #ddd;
+  font-family: monospace;
+  font-size: 11px;
+  padding: 5px 7px;
+}
+input[type="text"]:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: #666;
+}
+select option { background: #1e1e1e; }
+textarea { resize: vertical; }
+textarea[readonly] { color: #888; cursor: default; }
+
+#status {
+  font-size: 10px;
+  color: #555;
+  line-height: 1.7;
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px solid #222;
+}
+
+#canvas-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+  background: #222;
+}
+#canvas-wrap { margin: auto; padding: 24px; line-height: 0; }
+#canvas-inner { position: relative; display: inline-block; line-height: 0; }
+#grid    { display: block; image-rendering: pixelated; }
+#overlay { position: absolute; top: 0; left: 0; pointer-events: none; image-rendering: pixelated; }
+.mode-enemy #grid { cursor: default; }
+.mode-enemy #overlay { cursor: crosshair; pointer-events: auto; }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <h1>Level Editor</h1>
+
+  <div>
+    <div class="section-label">Level Name</div>
+    <input id="level-name" type="text" placeholder="NEW LEVEL" maxlength="40" />
+  </div>
+
+  <div>
+    <div class="section-label">Tiles (press 0–9)</div>
+    <div id="palette"></div>
+  </div>
+
+  <div>
+    <div class="section-label">Tools</div>
+    <div class="tool-group">
+      <button class="tool-btn active" id="tool-paint">✏ Paint  (P)</button>
+      <button class="tool-btn"        id="tool-erase">◻ Erase  (E)</button>
+      <button class="tool-btn"        id="tool-fill" >▣ Fill   (F)</button>
+    </div>
+  </div>
+
+  <div>
+    <div class="section-label">Mode</div>
+    <div class="tool-group">
+      <button class="tool-btn active" id="mode-tile">▦ Tiles</button>
+      <button class="tool-btn"        id="mode-enemy">◉ Enemies</button>
+    </div>
+  </div>
+
+  <div id="enemy-panel" style="display:none">
+    <div class="section-label">Enemy</div>
+    <div style="font-size:10px;color:#666;margin-bottom:6px">Click grid to place · right-click to delete</div>
+    <div id="enemy-config" style="display:none">
+      <select id="enemy-type" style="margin-bottom:6px">
+        <option value="patrol">Patrol (purple)</option>
+        <option value="watcher">Watcher (indigo)</option>
+      </select>
+      <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px">
+        <span style="font-size:10px;color:#888;white-space:nowrap">Speed</span>
+        <input type="number" id="enemy-speed" value="1.0" min="0.1" max="3" step="0.05" style="width:60px" />
+      </div>
+      <div id="watcher-fields">
+        <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px">
+          <span style="font-size:10px;color:#888;white-space:nowrap">Chase</span>
+          <input type="number" id="enemy-chase" value="2.0" min="0.1" max="5" step="0.05" style="width:60px" />
+        </div>
+        <select id="enemy-facing" style="margin-bottom:6px">
+          <option value="right">Facing right</option>
+          <option value="left">Facing left</option>
+          <option value="down">Facing down</option>
+          <option value="up">Facing up</option>
+        </select>
+      </div>
+      <div style="font-size:10px;color:#555;margin-bottom:6px" id="enemy-wp-count"></div>
+      <button class="tool-btn" id="btn-repos-enemy">↔ Move start</button>
+      <br><br>
+      <button class="tool-btn danger" id="btn-delete-enemy">✕ Delete enemy</button>
+    </div>
+    <div id="enemy-hint" style="font-size:10px;color:#555">No enemy selected</div>
+  </div>
+
+  <div>
+    <div class="section-label">Load Existing Level</div>
+    <select id="level-select"><option value="">— loading… —</option></select>
+    <br><br>
+    <button class="tool-btn" id="btn-load">↓ Load selected</button>
+  </div>
+
+  <div id="validation-panel"></div>
+
+  <div>
+    <div class="section-label">Export</div>
+    <button class="tool-btn success" id="btn-export">⎘ Copy to clipboard</button>
+    <br><br>
+    <textarea id="export-out" readonly rows="6" placeholder="(export preview appears here)"></textarea>
+  </div>
+
+  <div>
+    <div class="section-label">Import (paste map or levels.push block)</div>
+    <textarea id="import-in" rows="5" placeholder="Paste here…"></textarea>
+    <br>
+    <button class="tool-btn" id="btn-import">↑ Import map</button>
+  </div>
+
+  <div>
+    <button class="tool-btn danger" id="btn-clear">⊘ Clear grid</button>
+  </div>
+
+  <div id="status">tile: —<br>cell: —</div>
+</div>
+
+<div id="canvas-area">
+  <div id="canvas-wrap">
+    <div id="canvas-inner">
+      <canvas id="grid"></canvas>
+      <canvas id="overlay"></canvas>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Game stubs (must exist before level scripts load) ────────────────────────
+// Using var so level scripts that call levels.push() find it as a global.
+var levels = [];
+function wp(r, c) { return { x: c * 40 + 6, y: r * 40 + 6 }; }
+
+// ── Tile definitions ─────────────────────────────────────────────────────────
+// To add a new tile type: append one entry here. Nothing else needs changing.
+// Colors match the game renderer exactly. glyph/glyphColor used by renderCell.
+const TILES = [
+  { id: 0, label: 'Floor',       color: '#16162a', border: '#1e1e38', glyph: '',    glyphColor: ''                  },
+  { id: 1, label: 'Wall',        color: '#252545', border: '#1a1a30', glyph: '',    glyphColor: ''                  },
+  { id: 2, label: 'Coin',        color: '#16162a', border: '#1e1e38', glyph: '●',   glyphColor: '#f0b429'           },
+  { id: 3, label: 'Exit',        color: '#160909', border: '#c0392b', glyph: 'X',   glyphColor: '#c0392b'           },
+  { id: 4, label: 'Exit (open)', color: '#07170f', border: '#2ecc71', glyph: 'X',   glyphColor: '#2ecc71', hidden: true },
+  { id: 5, label: 'Fire',        color: '#321515', border: '#d94b16', glyph: '▲',   glyphColor: '#ff7a18'           },
+  { id: 6, label: 'Key',         color: '#16162a', border: '#1e1e38', glyph: '⚷',   glyphColor: '#f0b429'           },
+  { id: 7, label: 'Gate',        color: '#102a43', border: '#3498db', glyph: '‖',   glyphColor: '#8fd3ff'           },
+  { id: 8, label: 'Water',       color: '#0b2d4d', border: '#3498db', glyph: '≈',   glyphColor: 'rgba(143,211,255,0.9)' },
+  { id: 9, label: 'Water+Coin',  color: '#0b2d4d', border: '#f0b429', glyph: '≈●',  glyphColor: '#f0b429'           },
+  { id: 10, label: 'Player Start', color: '#0a2a0a', border: '#2ecc71', glyph: '▶', glyphColor: '#2ecc71'           },
+];
+const TILE_MAP = Object.fromEntries(TILES.map(t => [t.id, t]));
+const MAX_TILE_ID = TILES[TILES.length - 1].id;
+
+// ── Config ───────────────────────────────────────────────────────────────────
+const CFG = {
+  rows: 15,
+  cols: 20,
+  tileSize: 32,
+};
+
+// ── State ────────────────────────────────────────────────────────────────────
+const state = {
+  map:           newMap(),
+  levelName:     '',
+  selectedTile:  1,
+  tool:          'paint',
+  painting:      false,
+  lastCell:      null,
+  editorMode:    'tile',   // 'tile' | 'enemy'
+  enemies:       [],
+  selectedEnemy: null,     // index into state.enemies, or null
+  repositioning: false,    // true when waiting for a click to move enemy start
+};
+
+function newMap() {
+  return Array.from({ length: CFG.rows }, () => Array(CFG.cols).fill(0));
+}
+
+// ── Canvas ───────────────────────────────────────────────────────────────────
+const canvas  = document.getElementById('grid');
+const ctx     = canvas.getContext('2d');
+const overlay = document.getElementById('overlay');
+const octx    = overlay.getContext('2d');
+const dpr     = window.devicePixelRatio || 1;
+
+const PX_W = CFG.cols * CFG.tileSize;
+const PX_H = CFG.rows * CFG.tileSize;
+
+canvas.width        = PX_W * dpr;
+canvas.height       = PX_H * dpr;
+canvas.style.width  = PX_W + 'px';
+canvas.style.height = PX_H + 'px';
+ctx.scale(dpr, dpr);
+
+overlay.width        = PX_W * dpr;
+overlay.height       = PX_H * dpr;
+overlay.style.width  = PX_W + 'px';
+overlay.style.height = PX_H + 'px';
+octx.scale(dpr, dpr);
+
+// ── Render ───────────────────────────────────────────────────────────────────
+function renderAll() {
+  for (let r = 0; r < CFG.rows; r++)
+    for (let c = 0; c < CFG.cols; c++)
+      renderCell(r, c);
+}
+
+function renderCell(r, c) {
+  const id = state.map[r][c];
+  const x  = c * CFG.tileSize;
+  const y  = r * CFG.tileSize;
+  const s  = CFG.tileSize; // 32px; game uses 40px — scale factor ~0.8
+
+  ctx.shadowBlur = 0;
+
+  if (id === 1) {
+    // Wall — 3-layer block, same colours as game
+    ctx.fillStyle = '#252545'; ctx.fillRect(x, y, s, s);
+    ctx.fillStyle = '#363668'; ctx.fillRect(x + 2, y + 2, s - 4, s - 9);
+    ctx.fillStyle = '#1a1a30'; ctx.fillRect(x, y + s - 7, s, 7);
+    return;
+  }
+
+  // All non-wall tiles share the same floor background
+  ctx.fillStyle = '#16162a'; ctx.fillRect(x, y, s, s);
+  ctx.strokeStyle = '#1e1e38'; ctx.lineWidth = 0.5;
+  ctx.strokeRect(x + 0.5, y + 0.5, s - 1, s - 1);
+
+  if (id === 2) {
+    // Coin — gold glowing circle
+    ctx.shadowColor = '#f0b429'; ctx.shadowBlur = 8;
+    ctx.fillStyle = '#f0b429';
+    ctx.beginPath(); ctx.arc(x + s / 2, y + s / 2, s * 0.22, 0, Math.PI * 2); ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#ffe066';
+    ctx.beginPath(); ctx.arc(x + s / 2 - 2, y + s / 2 - 2, s * 0.07, 0, Math.PI * 2); ctx.fill();
+
+  } else if (id === 3 || id === 4) {
+    // Exit locked (3) / open (4) — door rectangle with coloured border
+    const col = id === 3 ? '#c0392b' : '#2ecc71';
+    const bg  = id === 3 ? '#160909' : '#07170f';
+    const dx = x + s * 0.2, dy = y + s * 0.12, dw = s * 0.6, dh = s * 0.76;
+    ctx.fillStyle = bg;  ctx.fillRect(dx, dy, dw, dh);
+    ctx.strokeStyle = col; ctx.lineWidth = 2.5; ctx.strokeRect(dx, dy, dw, dh);
+    ctx.fillStyle = col.replace(')', ',0.18)').replace('rgb', 'rgba');
+    ctx.fillRect(dx + s * 0.1, dy + s * 0.1, dw - s * 0.2, dh - s * 0.2);
+    ctx.fillStyle = col; ctx.fillRect(dx, dy + dh - 2.5, dw, 2.5);
+
+  } else if (id === 5) {
+    // Fire — dark base with orange/red glow
+    ctx.fillStyle = '#321515';
+    ctx.fillRect(x + s * 0.15, y + s * 0.18, s * 0.7, s * 0.7);
+    ctx.shadowColor = '#ff7a18'; ctx.shadowBlur = 10;
+    ctx.fillStyle = '#ff7a18';
+    ctx.font = `${Math.floor(s * 0.55)}px sans-serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('🔥', x + s / 2, y + s / 2 + 1);
+    ctx.shadowBlur = 0;
+
+  } else if (id === 6) {
+    // Key — gold key drawn with arcs and lines
+    ctx.save(); ctx.translate(x + s / 2, y + s / 2);
+    ctx.strokeStyle = '#f0b429'; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
+    ctx.shadowColor = '#f0b429'; ctx.shadowBlur = 8;
+    ctx.beginPath(); ctx.arc(-s * 0.13, -s * 0.07, s * 0.15, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(s * 0.02, -s * 0.07); ctx.lineTo(s * 0.32, -s * 0.07); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(s * 0.32, -s * 0.07); ctx.lineTo(s * 0.32, s * 0.1);  ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(s * 0.19, -s * 0.07); ctx.lineTo(s * 0.19, s * 0.06);  ctx.stroke();
+    ctx.restore(); ctx.shadowBlur = 0;
+
+  } else if (id === 7) {
+    // Gate — blue box with vertical bars
+    ctx.fillStyle = '#102a43'; ctx.fillRect(x + s * 0.1, y + s * 0.1, s * 0.8, s * 0.8);
+    ctx.strokeStyle = '#3498db'; ctx.lineWidth = 2;
+    ctx.strokeRect(x + s * 0.1, y + s * 0.1, s * 0.8, s * 0.8);
+    ctx.fillStyle = '#8fd3ff';
+    for (let i = 0; i < 4; i++)
+      ctx.fillRect(x + s * 0.16 + i * s * 0.175, y + s * 0.14, s * 0.07, s * 0.6);
+
+  } else if (id === 8 || id === 9) {
+    // Water — deep blue with translucent inner
+    ctx.fillStyle = '#0b2d4d'; ctx.fillRect(x, y, s, s);
+    ctx.fillStyle = 'rgba(52,152,219,0.32)'; ctx.fillRect(x + 2, y + 2, s - 4, s - 4);
+    ctx.strokeStyle = 'rgba(143,211,255,0.55)'; ctx.lineWidth = 1.5;
+    ctx.strokeRect(x + 1, y + 1, s - 2, s - 2);
+    if (id === 9) {
+      // Water+Coin — add gold coin on top
+      ctx.shadowColor = '#f0b429'; ctx.shadowBlur = 6;
+      ctx.fillStyle = '#f0b429';
+      ctx.beginPath(); ctx.arc(x + s / 2, y + s / 2, s * 0.18, 0, Math.PI * 2); ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+
+  } else if (id === 10) {
+    // Player start — green circle on dark floor
+    ctx.fillStyle = '#0a2a0a'; ctx.fillRect(x, y, s, s);
+    ctx.shadowColor = '#2ecc71'; ctx.shadowBlur = 10;
+    ctx.fillStyle = '#2ecc71';
+    ctx.beginPath(); ctx.arc(x + s / 2, y + s / 2, s * 0.28, 0, Math.PI * 2); ctx.fill();
+    ctx.shadowBlur = 0;
+  }
+}
+
+// ── Overlay (enemies + paths) ─────────────────────────────────────────────────
+const ENEMY_COLORS = { patrol: '#9b59b6', watcher: '#4a3f8f' };
+const WP_R = 5;   // waypoint dot radius
+const EN_R = 9;   // enemy body radius
+
+function cellCenter(r, c) {
+  return { x: c * CFG.tileSize + CFG.tileSize / 2, y: r * CFG.tileSize + CFG.tileSize / 2 };
+}
+
+function renderOverlay() {
+  octx.clearRect(0, 0, PX_W, PX_H);
+
+  state.enemies.forEach((en, idx) => {
+    const col      = ENEMY_COLORS[en.type] || ENEMY_COLORS.patrol;
+    const selected = idx === state.selectedEnemy;
+    const pts      = en.path.map(p => cellCenter(p.r, p.c));
+
+    // Path lines
+    if (pts.length > 1) {
+      const last = en.path[en.path.length - 1];
+      const first = en.path[0];
+      const isLoop = last.r === first.r && last.c === first.c;
+      octx.beginPath();
+      octx.moveTo(pts[0].x, pts[0].y);
+      // Skip drawing the last point if it's a loop close (it lands on the body dot)
+      const drawTo = isLoop ? pts.length - 1 : pts.length;
+      for (let i = 1; i < drawTo; i++) octx.lineTo(pts[i].x, pts[i].y);
+      if (isLoop) octx.closePath();
+      octx.strokeStyle = selected ? '#fff' : col;
+      octx.lineWidth   = selected ? 2 : 1.5;
+      octx.setLineDash([4, 3]);
+      octx.stroke();
+      octx.setLineDash([]);
+    }
+
+    // Waypoint dots (skip index 0 — that's the enemy body)
+    for (let i = 1; i < pts.length; i++) {
+      octx.beginPath();
+      octx.arc(pts[i].x, pts[i].y, WP_R, 0, Math.PI * 2);
+      octx.fillStyle   = selected ? '#fff' : col;
+      octx.globalAlpha = 0.85;
+      octx.fill();
+      octx.globalAlpha = 1;
+    }
+
+    // Enemy body (index 0 = starting position)
+    const pos = pts[0];
+    octx.beginPath();
+    octx.arc(pos.x, pos.y, EN_R, 0, Math.PI * 2);
+    octx.fillStyle   = col;
+    octx.shadowColor = col;
+    octx.shadowBlur  = selected ? 12 : 6;
+    octx.fill();
+    octx.shadowBlur  = 0;
+    if (selected) {
+      octx.beginPath();
+      octx.arc(pos.x, pos.y, EN_R + 3, 0, Math.PI * 2);
+      octx.strokeStyle = '#fff';
+      octx.lineWidth   = 1.5;
+      octx.stroke();
+    }
+  });
+}
+
+// ── Paint actions ─────────────────────────────────────────────────────────────
+// Placing a tile clears all listed IDs first (single-instance enforcement).
+// Exits 3 and 4 share a slot — placing either removes both.
+const CLEARS_ON_PLACE = {
+  3:  [3, 4],
+  4:  [3, 4],
+  10: [10],
+};
+
+function clearTile(id) {
+  for (let r = 0; r < CFG.rows; r++)
+    for (let c = 0; c < CFG.cols; c++)
+      if (state.map[r][c] === id) { state.map[r][c] = 0; renderCell(r, c); }
+}
+
+function paintCell(r, c) {
+  const value = state.tool === 'erase' ? 0 : state.selectedTile;
+  if (state.map[r][c] === value) return;
+  const clears = CLEARS_ON_PLACE[value];
+  if (clears) clears.forEach(clearTile);
+  state.map[r][c] = value;
+  renderCell(r, c);
+  updateValidation();
+}
+
+function floodFill(r, c) {
+  const target = state.map[r][c];
+  const value  = state.tool === 'erase' ? 0 : state.selectedTile;
+  if (target === value) return;
+  const stack = [[r, c]];
+  const visited = new Set();
+  while (stack.length) {
+    const [cr, cc] = stack.pop();
+    const key = cr * CFG.cols + cc;
+    if (visited.has(key)) continue;
+    if (cr < 0 || cr >= CFG.rows || cc < 0 || cc >= CFG.cols) continue;
+    if (state.map[cr][cc] !== target) continue;
+    visited.add(key);
+    state.map[cr][cc] = value;
+    renderCell(cr, cc);
+    stack.push([cr-1,cc],[cr+1,cc],[cr,cc-1],[cr,cc+1]);
+  }
+}
+
+function applyTool(r, c) {
+  if (state.tool === 'fill') { floodFill(r, c); updateValidation(); }
+  else paintCell(r, c);
+}
+
+// ── Mouse events ──────────────────────────────────────────────────────────────
+function cellFromEvent(e) {
+  const rect = canvas.getBoundingClientRect();
+  const c = Math.floor((e.clientX - rect.left)  / CFG.tileSize);
+  const r = Math.floor((e.clientY - rect.top)   / CFG.tileSize);
+  if (r >= 0 && r < CFG.rows && c >= 0 && c < CFG.cols) return { r, c };
+  return null;
+}
+
+canvas.addEventListener('mousedown', e => {
+  if (state.editorMode !== 'tile') return;
+  e.preventDefault();
+  state.painting = true;
+  const cell = cellFromEvent(e);
+  if (!cell) return;
+  state.lastCell = cell;
+  applyTool(cell.r, cell.c);
+});
+
+canvas.addEventListener('mousemove', e => {
+  if (state.editorMode !== 'tile') return;
+  const cell = cellFromEvent(e);
+  updateStatus(cell);
+  if (!state.painting || !cell) return;
+  if (state.lastCell && cell.r === state.lastCell.r && cell.c === state.lastCell.c) return;
+  state.lastCell = cell;
+  applyTool(cell.r, cell.c);
+});
+
+canvas.addEventListener('mouseup',    () => { state.painting = false; state.lastCell = null; });
+canvas.addEventListener('mouseleave', () => { state.painting = false; state.lastCell = null; updateStatus(null); });
+
+canvas.addEventListener('contextmenu', e => {
+  if (state.editorMode !== 'tile') return;
+  e.preventDefault();
+  const cell = cellFromEvent(e);
+  if (!cell) return;
+  state.map[cell.r][cell.c] = 0;
+  renderCell(cell.r, cell.c);
+  updateValidation();
+});
+
+// ── Enemy-mode overlay events ──────────────────────────────────────────────────
+function pixelToCell(px, py) {
+  const c = Math.floor(px / CFG.tileSize);
+  const r = Math.floor(py / CFG.tileSize);
+  if (r >= 0 && r < CFG.rows && c >= 0 && c < CFG.cols) return { r, c };
+  return null;
+}
+
+function overlayEventPos(e) {
+  const rect = overlay.getBoundingClientRect();
+  return { px: e.clientX - rect.left, py: e.clientY - rect.top };
+}
+
+function nearestEnemy(px, py, radius) {
+  let best = null, bestDist = Infinity;
+  state.enemies.forEach((en, idx) => {
+    const pos = cellCenter(en.path[0].r, en.path[0].c);
+    const dx = pos.x - px, dy = pos.y - py;
+    const d  = Math.sqrt(dx*dx + dy*dy);
+    if (d < radius && d < bestDist) { bestDist = d; best = idx; }
+  });
+  return best;
+}
+
+function nearestWaypoint(enemyIdx, px, py, radius) {
+  const path = state.enemies[enemyIdx].path;
+  let best = null, bestDist = Infinity;
+  for (let i = 1; i < path.length; i++) {
+    const pos = cellCenter(path[i].r, path[i].c);
+    const dx = pos.x - px, dy = pos.y - py;
+    const d  = Math.sqrt(dx*dx + dy*dy);
+    if (d < radius && d < bestDist) { bestDist = d; best = i; }
+  }
+  return best;
+}
+
+overlay.addEventListener('mousedown', e => {
+  if (state.editorMode !== 'enemy') return;
+  e.preventDefault();
+  const { px, py } = overlayEventPos(e);
+  const cell = pixelToCell(px, py);
+  if (!cell) return;
+
+  // Right-click: delete nearest waypoint (any enemy), or delete enemy body
+  if (e.button === 2) {
+    state.repositioning = false;
+    for (let i = 0; i < state.enemies.length; i++) {
+      const wpIdx = nearestWaypoint(i, px, py, CFG.tileSize);
+      if (wpIdx !== null) {
+        state.enemies[i].path.splice(wpIdx, 1);
+        renderOverlay();
+        refreshEnemyPanel();
+        return;
+      }
+    }
+    const idx = nearestEnemy(px, py, CFG.tileSize);
+    if (idx !== null) deleteEnemy(idx);
+    return;
+  }
+
+  if (e.button !== 0) return;
+
+  // Reposition mode: move selected enemy's start to clicked cell
+  if (state.repositioning && state.selectedEnemy !== null) {
+    state.enemies[state.selectedEnemy].path[0] = { r: cell.r, c: cell.c };
+    state.repositioning = false;
+    renderOverlay();
+    refreshEnemyPanel();
+    return;
+  }
+
+  // Click on existing enemy body → select it, or close loop if already selected
+  const hit = nearestEnemy(px, py, CFG.tileSize);
+  if (hit !== null) {
+    if (hit === state.selectedEnemy) {
+      // Second click on own body: add start position as final waypoint to close loop
+      const start = state.enemies[hit].path[0];
+      state.enemies[hit].path.push({ r: start.r, c: start.c });
+      renderOverlay();
+      refreshEnemyPanel();
+    } else {
+      selectEnemy(hit);
+    }
+    return;
+  }
+
+  // Click on existing waypoint of selected enemy → do nothing
+  if (state.selectedEnemy !== null) {
+    const wpIdx = nearestWaypoint(state.selectedEnemy, px, py, CFG.tileSize * 0.6);
+    if (wpIdx !== null) return;
+  }
+
+  if (state.selectedEnemy !== null) {
+    // Add waypoint to selected enemy
+    state.enemies[state.selectedEnemy].path.push({ r: cell.r, c: cell.c });
+    renderOverlay();
+    refreshEnemyPanel();
+  } else {
+    // Place new enemy
+    state.enemies.push({ type: 'patrol', speed: 1.0, path: [{ r: cell.r, c: cell.c }] });
+    selectEnemy(state.enemies.length - 1);
+  }
+});
+
+overlay.addEventListener('contextmenu', e => e.preventDefault());
+
+// ── Status bar ────────────────────────────────────────────────────────────────
+const statusEl = document.getElementById('status');
+function updateStatus(cell) {
+  const tile = TILE_MAP[state.selectedTile];
+  statusEl.innerHTML = cell
+    ? `tile: ${tile.id} · ${tile.label}<br>cell: row ${cell.r}, col ${cell.c} → ${state.map[cell.r][cell.c]}`
+    : `tile: ${tile.id} · ${tile.label}<br>cell: —`;
+}
+
+// ── Palette UI ────────────────────────────────────────────────────────────────
+TILES.filter(t => !t.hidden).forEach(tile => {
+  const btn = document.createElement('button');
+  btn.className = 'tile-btn';
+  btn.dataset.id = tile.id;
+  btn.title = `${tile.label} (press ${tile.id})`;
+
+  const swatch = document.createElement('span');
+  swatch.className = 'swatch';
+  swatch.style.background = tile.color;
+  swatch.style.borderColor = tile.border;
+
+  const label = document.createElement('span');
+  label.textContent = `${tile.id} · ${tile.label}`;
+
+  btn.append(swatch, label);
+  btn.addEventListener('click', () => selectTile(tile.id));
+  document.getElementById('palette').appendChild(btn);
+});
+
+function selectTile(id) {
+  state.selectedTile = id;
+  document.querySelectorAll('.tile-btn').forEach(btn =>
+    btn.classList.toggle('active', parseInt(btn.dataset.id, 10) === id)
+  );
+  updateStatus(null);
+}
+
+// ── Tool buttons ──────────────────────────────────────────────────────────────
+const toolButtons = {
+  paint: document.getElementById('tool-paint'),
+  erase: document.getElementById('tool-erase'),
+  fill:  document.getElementById('tool-fill'),
+};
+function selectTool(name) {
+  state.tool = name;
+  Object.entries(toolButtons).forEach(([k, btn]) => btn.classList.toggle('active', k === name));
+}
+Object.entries(toolButtons).forEach(([name, btn]) => btn.addEventListener('click', () => selectTool(name)));
+
+// ── Keyboard shortcuts ────────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  const n = parseInt(e.key, 10);
+  if (!isNaN(n) && n >= 0 && n <= MAX_TILE_ID && !TILE_MAP[n]?.hidden) { selectTile(n); return; }
+  if (e.key === 'p' || e.key === 'P') { selectTool('paint'); return; }
+  if (e.key === 'e' || e.key === 'E') { selectTool('erase'); return; }
+  if (e.key === 'f' || e.key === 'F') { selectTool('fill');  return; }
+});
+
+// ── Mode switching ────────────────────────────────────────────────────────────
+function setMode(mode) {
+  state.editorMode = mode;
+  document.getElementById('mode-tile').classList.toggle('active', mode === 'tile');
+  document.getElementById('mode-enemy').classList.toggle('active', mode === 'enemy');
+  document.getElementById('enemy-panel').style.display = mode === 'enemy' ? '' : 'none';
+  document.getElementById('canvas-inner').className = mode === 'enemy' ? 'mode-enemy' : '';
+  if (mode === 'tile') { selectEnemy(null); }
+}
+
+document.getElementById('mode-tile').addEventListener('click',  () => setMode('tile'));
+document.getElementById('mode-enemy').addEventListener('click', () => setMode('enemy'));
+
+// ── Enemy select / delete / config ────────────────────────────────────────────
+function selectEnemy(idx) {
+  state.selectedEnemy = idx;
+  state.repositioning = false;
+  renderOverlay();
+  refreshEnemyPanel();
+}
+
+function deleteEnemy(idx) {
+  state.enemies.splice(idx, 1);
+  if (state.selectedEnemy === idx) state.selectedEnemy = null;
+  else if (state.selectedEnemy > idx) state.selectedEnemy--;
+  renderOverlay();
+  refreshEnemyPanel();
+}
+
+function refreshEnemyPanel() {
+  const config = document.getElementById('enemy-config');
+  const hint   = document.getElementById('enemy-hint');
+  const idx    = state.selectedEnemy;
+
+  if (idx === null || !state.enemies[idx]) {
+    config.style.display = 'none';
+    hint.style.display   = '';
+    hint.textContent     = state.enemies.length
+      ? `${state.enemies.length} enem${state.enemies.length > 1 ? 'ies' : 'y'} placed — click one to select`
+      : 'No enemy selected';
+    return;
+  }
+
+  hint.style.display   = 'none';
+  config.style.display = '';
+  const en = state.enemies[idx];
+
+  document.getElementById('enemy-type').value  = en.type;
+  document.getElementById('enemy-speed').value = en.speed;
+  document.getElementById('watcher-fields').style.display = en.type === 'watcher' ? '' : 'none';
+  if (en.type === 'watcher') {
+    document.getElementById('enemy-chase').value  = en.chaseSpeed ?? 2.0;
+    document.getElementById('enemy-facing').value = en.facing ?? 'right';
+  }
+  document.getElementById('enemy-wp-count').textContent =
+    `${en.path.length} waypoint${en.path.length !== 1 ? 's' : ''}`;
+  const reposBtn = document.getElementById('btn-repos-enemy');
+  reposBtn.textContent = state.repositioning ? '↩ Click canvas to place' : '↔ Move start';
+  reposBtn.classList.toggle('active', state.repositioning);
+}
+
+document.getElementById('enemy-type').addEventListener('change', e => {
+  if (state.selectedEnemy === null) return;
+  state.enemies[state.selectedEnemy].type = e.target.value;
+  refreshEnemyPanel();
+  renderOverlay();
+});
+document.getElementById('enemy-speed').addEventListener('change', e => {
+  if (state.selectedEnemy === null) return;
+  state.enemies[state.selectedEnemy].speed = parseFloat(e.target.value) || 1.0;
+});
+document.getElementById('enemy-chase').addEventListener('change', e => {
+  if (state.selectedEnemy === null) return;
+  state.enemies[state.selectedEnemy].chaseSpeed = parseFloat(e.target.value) || 2.0;
+});
+document.getElementById('enemy-facing').addEventListener('change', e => {
+  if (state.selectedEnemy === null) return;
+  state.enemies[state.selectedEnemy].facing = e.target.value;
+});
+document.getElementById('btn-repos-enemy').addEventListener('click', () => {
+  if (state.selectedEnemy === null) return;
+  state.repositioning = !state.repositioning;
+  refreshEnemyPanel();
+});
+document.getElementById('btn-delete-enemy').addEventListener('click', () => {
+  if (state.selectedEnemy !== null) deleteEnemy(state.selectedEnemy);
+});
+
+// ── Clear ─────────────────────────────────────────────────────────────────────
+document.getElementById('btn-clear').addEventListener('click', () => {
+  if (!confirm('Clear the entire grid?')) return;
+  state.map     = newMap();
+  state.enemies = [];
+  state.selectedEnemy = null;
+  renderAll();
+  renderOverlay();
+  updateValidation();
+  refreshEnemyPanel();
+});
+
+// ── Load existing levels ──────────────────────────────────────────────────────
+// Tries level-1.js, level-2.js … up to MAX_LEVEL_SCAN. Stops on first 404.
+// Adding a new level file automatically makes it appear in the dropdown.
+const MAX_LEVEL_SCAN = 30;
+
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = src;
+    s.onload  = () => resolve(true);
+    s.onerror = () => { s.remove(); resolve(false); };
+    document.head.appendChild(s);
+  });
+}
+
+async function discoverLevels() {
+  for (let i = 1; i <= MAX_LEVEL_SCAN; i++) {
+    const ok = await loadScript(`js/levels/level-${i}.js`);
+    if (!ok) break;
+  }
+}
+
+function populateLevelSelect() {
+  const sel = document.getElementById('level-select');
+  sel.innerHTML = '';
+  const blank = document.createElement('option');
+  blank.value = '';
+  blank.textContent = levels.length
+    ? `— choose a level (${levels.length} found) —`
+    : '— no levels found —';
+  sel.appendChild(blank);
+
+  levels.forEach((lvl, i) => {
+    const opt = document.createElement('option');
+    opt.value = i;
+    opt.textContent = `${i + 1}. ${lvl.name}`;
+    sel.appendChild(opt);
+  });
+}
+
+document.getElementById('btn-load').addEventListener('click', () => {
+  const sel = document.getElementById('level-select');
+  const idx = parseInt(sel.value, 10);
+  if (isNaN(idx)) return;
+
+  const isBlank = state.map.every(row => row.every(v => v === 0));
+  if (!isBlank && !confirm('Load this level and discard current work?')) return;
+
+  const lvl = levels[idx];
+  state.map = lvl.map.map(row => [...row]);
+
+  const nameInput = document.getElementById('level-name');
+  nameInput.value = lvl.name ?? '';
+  state.levelName = nameInput.value;
+
+  if (lvl.playerStart) {
+    const r = Math.round((lvl.playerStart.y - 6) / 40);
+    const c = Math.round((lvl.playerStart.x - 6) / 40);
+    if (r >= 0 && r < CFG.rows && c >= 0 && c < CFG.cols)
+      state.map[r][c] = 10;
+  }
+
+  state.enemies = (lvl.enemies || []).map(en => ({
+    type:       en.chaseSpeed !== undefined ? 'watcher' : 'patrol',
+    speed:      en.speed ?? 1.0,
+    chaseSpeed: en.chaseSpeed ?? 2.0,
+    facing:     en.facing ?? 'right',
+    path:       (en.path || [{ x: en.x, y: en.y }]).map(p => ({
+      r: Math.round((p.y - 6) / 40),
+      c: Math.round((p.x - 6) / 40),
+    })),
+  }));
+  state.selectedEnemy = null;
+
+  renderAll();
+  renderOverlay();
+  updateValidation();
+  refreshEnemyPanel();
+});
+
+// ── Validation ────────────────────────────────────────────────────────────────
+function mapHasTile(id) {
+  return state.map.some(row => row.includes(id));
+}
+
+function updateValidation() {
+  const panel = document.getElementById('validation-panel');
+  const warnings = [];
+  if (!mapHasTile(10))                   warnings.push('⚠ no player start');
+  if (!mapHasTile(3) && !mapHasTile(4))  warnings.push('⚠ no exit');
+  if (!mapHasTile(2) && !mapHasTile(9))  warnings.push('⚠ no coins');
+  panel.innerHTML = warnings.length
+    ? `<div style="font-size:10px;color:#c0392b;line-height:1.8">${warnings.join('<br>')}</div>`
+    : `<div style="font-size:10px;color:#2ecc71">✓ ready</div>`;
+}
+
+// ── Export ────────────────────────────────────────────────────────────────────
+function countTile(id) {
+  return state.map.reduce((n, row) => n + row.filter(v => v === id).length, 0);
+}
+
+function findTile(id) {
+  for (let r = 0; r < CFG.rows; r++)
+    for (let c = 0; c < CFG.cols; c++)
+      if (state.map[r][c] === id) return { r, c };
+  return null;
+}
+
+function buildExport() {
+  const name  = (document.getElementById('level-name').value.trim() || 'NEW LEVEL').toUpperCase();
+  const coins = countTile(2) + countTile(9);
+
+  // Find player start tile; convert to pixel coords; output cell as floor in map
+  const ps    = findTile(10);
+  const playerStart = ps ? wp(ps.r, ps.c) : { x: 46, y: 46 };
+  const exportMap = state.map.map(row => row.map(v => v === 10 ? 0 : v));
+  const rows  = exportMap.map(row => `      [${row.join(',')}]`).join(',\n');
+
+  const enemyLines = state.enemies.map(en => {
+    const g0    = wp(en.path[0].r, en.path[0].c);
+    const pStr  = en.path.map(p => { const g = wp(p.r, p.c); return `{x:${g.x},y:${g.y}}`; }).join(', ');
+    const base  = `{ x:${g0.x}, y:${g0.y}, w:28, h:28, speed:${en.speed}, path:[${pStr}]`;
+    const extra = en.type === 'watcher'
+      ? `, chaseSpeed:${en.chaseSpeed ?? 2.0}, facing:'${en.facing ?? 'right'}'`
+      : '';
+    return `      ${base}${extra} }`;
+  }).join(',\n');
+
+  return (
+    `levels.push(\n` +
+    `  {\n` +
+    `    name: '${name}',\n` +
+    `    totalCoins: ${coins},\n` +
+    `    playerStart: { x: ${playerStart.x}, y: ${playerStart.y} },\n` +
+    `    enemies: [\n${enemyLines ? enemyLines + '\n' : ''}    ],\n` +
+    `    map: [\n` +
+    `${rows},\n` +
+    `    ],\n` +
+    `  },\n` +
+    `);\n`
+  );
+}
+
+document.getElementById('btn-export').addEventListener('click', () => {
+  const text = buildExport();
+  const ta = document.getElementById('export-out');
+  ta.value = text;
+  ta.select();
+  try { document.execCommand('copy'); } catch {}
+
+  const btn = document.getElementById('btn-export');
+  const orig = btn.textContent;
+  btn.textContent = '✓ Copied!';
+  setTimeout(() => { btn.textContent = orig; }, 1500);
+});
+
+// ── Import ────────────────────────────────────────────────────────────────────
+function extractMapFromText(text) {
+  // Bracket-match the value of 'map:' first, then fall back to raw outer array
+  let start = -1;
+  const mapKey = text.search(/\bmap\s*:/);
+  if (mapKey !== -1) {
+    start = text.indexOf('[', mapKey);
+  } else {
+    start = text.indexOf('[');
+  }
+  if (start === -1) return null;
+
+  let depth = 0, end = -1;
+  for (let i = start; i < text.length; i++) {
+    if (text[i] === '[') depth++;
+    else if (text[i] === ']') { depth--; if (depth === 0) { end = i + 1; break; } }
+  }
+  if (end === -1) return null;
+
+  // Strip trailing commas so JSON.parse accepts it
+  const clean = text.slice(start, end).replace(/,(\s*[\]\}])/g, '$1');
+  try {
+    return JSON.parse(clean);
+  } catch {
+    return null;
+  }
+}
+
+function extractNameFromText(text) {
+  const m = text.match(/name\s*:\s*['"]([^'"]+)['"]/);
+  return m ? m[1] : null;
+}
+
+document.getElementById('btn-import').addEventListener('click', () => {
+  const text = document.getElementById('import-in').value.trim();
+  if (!text) return;
+
+  const map = extractMapFromText(text);
+  if (!map || !Array.isArray(map) || !Array.isArray(map[0])) {
+    alert('Could not parse a map array from the pasted text.\n\nPaste the full levels.push(…) block or a raw [[…],[…],…] array.');
+    return;
+  }
+
+  const rows = map.length;
+  const cols = map[0].length;
+  if (rows !== CFG.rows || cols !== CFG.cols) {
+    if (!confirm(`Map size is ${rows}×${cols} but editor expects ${CFG.rows}×${CFG.cols}. Load anyway?`)) return;
+  }
+
+  const isBlank = state.map.every(row => row.every(v => v === 0));
+  if (!isBlank && !confirm('Import this map and discard current work?')) return;
+
+  state.map = map.map(row => [...row]);
+
+  const found = extractNameFromText(text);
+  if (found) {
+    document.getElementById('level-name').value = found;
+    state.levelName = found;
+  }
+
+  const psMatch = text.match(/playerStart\s*:\s*\{\s*x\s*:\s*(\d+)\s*,\s*y\s*:\s*(\d+)/);
+  if (psMatch) {
+    const r = Math.round((parseInt(psMatch[2]) - 6) / 40);
+    const c = Math.round((parseInt(psMatch[1]) - 6) / 40);
+    if (r >= 0 && r < CFG.rows && c >= 0 && c < CFG.cols)
+      state.map[r][c] = 10;
+  }
+
+  renderAll();
+  updateValidation();
+  document.getElementById('import-in').value = '';
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+selectTile(1);
+renderAll();
+renderOverlay();
+updateValidation();
+refreshEnemyPanel();
+
+discoverLevels().then(() => {
+  populateLevelSelect();
+});
+</script>
+</body>
+</html>
