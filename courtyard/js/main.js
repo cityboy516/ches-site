@@ -108,5 +108,14 @@ function loop(timestamp) {
   requestAnimationFrame(loop);
 }
 
-loadLevel(0);
+const _preview = localStorage.getItem('courtyard_preview');
+if (_preview) {
+  try {
+    levels.push(JSON.parse(_preview));
+    localStorage.removeItem('courtyard_preview');
+    loadLevel(levels.length - 1);
+  } catch { loadLevel(0); }
+} else {
+  loadLevel(0);
+}
 loop();

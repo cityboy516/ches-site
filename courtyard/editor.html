@@ -212,6 +212,10 @@ textarea[readonly] { color: #888; cursor: default; }
   <div id="validation-panel"></div>
 
   <div>
+    <button class="tool-btn success" id="btn-playtest">▶ Playtest in game</button>
+  </div>
+
+  <div>
     <div class="section-label">Export</div>
     <button class="tool-btn success" id="btn-export">⎘ Copy to clipboard</button>
     <br><br>
@@ -982,6 +986,25 @@ function buildExport() {
   );
 }
 
+function buildExportObject() {
+  const name  = (document.getElementById('level-name').value.trim() || 'NEW LEVEL').toUpperCase();
+  const coins = countTile(2) + countTile(9);
+  const ps    = findTile(10);
+  const playerStart = ps ? wp(ps.r, ps.c) : { x: 46, y: 46 };
+  const exportMap = state.map.map(row => row.map(v => v === 10 ? 0 : v));
+  const enemies = state.enemies.map(en => {
+    const g0   = wp(en.path[0].r, en.path[0].c);
+    const path = en.path.map(p => wp(p.r, p.c));
+    const obj  = { x: g0.x, y: g0.y, w: 28, h: 28, speed: en.speed, path };
+    if (en.type === 'watcher') {
+      obj.chaseSpeed = en.chaseSpeed ?? 2.0;
+      obj.facing     = en.facing ?? 'right';
+    }
+    return obj;
+  });
+  return { name, totalCoins: coins, playerStart, enemies, map: exportMap };
+}
+
 document.getElementById('btn-export').addEventListener('click', () => {
   const text = buildExport();
   const ta = document.getElementById('export-out');
@@ -993,6 +1016,20 @@ document.getElementById('btn-export').addEventListener('click', () => {
   const orig = btn.textContent;
   btn.textContent = '✓ Copied!';
   setTimeout(() => { btn.textContent = orig; }, 1500);
+});
+
+// ── Playtest ──────────────────────────────────────────────────────────────────
+document.getElementById('btn-playtest').addEventListener('click', () => {
+  const missing = [];
+  if (!mapHasTile(10))                   missing.push('player start');
+  if (!mapHasTile(3) && !mapHasTile(4))  missing.push('exit');
+  if (!mapHasTile(2) && !mapHasTile(9))  missing.push('at least one coin');
+  if (missing.length) {
+    alert('Cannot playtest — missing: ' + missing.join(', ') + '.');
+    return;
+  }
+  localStorage.setItem('courtyard_preview', JSON.stringify(buildExportObject()));
+  window.open('index.html', '_blank');
 });
 
 // ── Import ────────────────────────────────────────────────────────────────────
