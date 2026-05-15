@@ -1029,7 +1029,7 @@ document.getElementById('btn-playtest').addEventListener('click', () => {
     return;
   }
   localStorage.setItem('courtyard_preview', JSON.stringify(buildExportObject()));
-  window.open('index.html', '_blank');
+  window.open('index.html?t=' + Date.now(), '_blank');
 });
 
 // ── Import ────────────────────────────────────────────────────────────────────
