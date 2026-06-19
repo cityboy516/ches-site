@@ -8,7 +8,6 @@ self.onmessage = function(e) {
         firstIteration = -3;
         escapeSquared = 256;
         smooth = 1;
-        smoothOffset = 0.0;
         var log2 = Math.log2(2);
     }
     var fractalData = new Uint8Array(e.data.juliaBuffer);
@@ -44,10 +43,6 @@ self.onmessage = function(e) {
                 zr = zrSquared - ziSquared + Cr;
                 zi = (zr_prev * 2) * zi + Ci;
                 iteration++;
-            }
-            if (smooth == 1) {
-                smoothOffset = (Math.log2(Math.log2(Math.sqrt(zrSquared + ziSquared)) / log2) - 2) * 255;
-                smoothFractal[x + y * width] = Math.floor(smoothOffset);
             }
             if (iteration == iter_max)
                 iteration = 255;
