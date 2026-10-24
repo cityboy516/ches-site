@@ -1,0 +1,356 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<meta name="robots" content="noindex, nofollow">
+<title>Tamara's Room Model</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one working screen. Model on the left, the joiner's cut list on the right; stacks on phones. */
+:root {
+  --bg: #F5F6F1;          /* off-white with a faint green bias, like primed MDF */
+  --panel: #FFFFFF;
+  --ink: #23271F;
+  --muted: #5E6558;
+  --line: #DADDD2;
+  --accent: #6E9A12;      /* lime, darkened enough for text */
+  --accent-soft: #E7F0CF;
+  --stage: #E9EBE4;
+  --font-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #171A15; --panel: #1F231C; --ink: #E8EBE2; --muted: #A2A99A; --line: #343A2F;
+    --accent: #B3D85A; --accent-soft: #2C3820; --stage: #262A22; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #171A15; --panel: #1F231C; --ink: #E8EBE2; --muted: #A2A99A; --line: #343A2F;
+  --accent: #B3D85A; --accent-soft: #2C3820; --stage: #262A22; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 32px;
+}
+.wrap { max-width: 1280px; margin: 0 auto; display: grid; gap: 18px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 24px; }
+h1 { font-family: var(--font-display); font-weight: 800; font-size: clamp(1.5rem, 3vw, 2.1rem); letter-spacing: -0.02em; margin: 0; text-wrap: balance; }
+.sub { color: var(--muted); margin: 0; max-width: 62ch; }
+.grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 18px; align-items: start; }
+@media (max-width: 900px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+
+.stage { position: relative; background: var(--stage); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; aspect-ratio: 4 / 3; max-width: 100%; min-height: 300px; }
+.stage canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+.stage canvas:active { cursor: grabbing; }
+.labels { position: absolute; inset: 0; pointer-events: none; }
+.tag { position: absolute; transform: translate(-50%, -50%); font-family: var(--font-data); font-size: 11.5px; line-height: 1.25; white-space: nowrap;
+  background: rgba(35, 39, 31, 0.86); color: #F4F7EC; padding: 3px 7px; border-radius: 4px; }
+.tag b { font-weight: 500; color: #CDEB7A; }
+.hint { position: absolute; left: 12px; bottom: 10px; font-size: 12px; color: var(--muted); background: var(--panel); padding: 3px 8px; border-radius: 4px; border: 1px solid var(--line); }
+.status[hidden] { display: none; }
+.status { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 14px; padding: 20px; text-align: center; }
+
+.controls { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; }
+.ctl { display: flex; align-items: center; gap: 8px; }
+.ctl > span { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; background: var(--panel); }
+.seg button { font: inherit; font-size: 13.5px; border: 0; background: transparent; color: var(--ink); padding: 6px 11px; cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed="true"] { background: var(--accent-soft); color: var(--ink); font-weight: 700; box-shadow: inset 0 -2px 0 var(--accent); }
+.seg button:focus-visible, .check input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.check { display: inline-flex; gap: 6px; align-items: center; font-size: 13.5px; cursor: pointer; }
+.swatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; margin-right: 5px; vertical-align: -1px; border: 1px solid rgba(0,0,0,.2); }
+
+aside { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px 16px 6px; display: grid; gap: 14px; min-width: 0; }
+aside h2 { font-family: var(--font-display); font-size: 1rem; font-weight: 800; margin: 0; }
+.cut { width: 100%; border-collapse: collapse; font-size: 13px; }
+.cut td { padding: 6px 0; border-top: 1px solid var(--line); vertical-align: top; }
+.cut td:last-child { font-family: var(--font-data); font-size: 12px; text-align: right; white-space: nowrap; padding-left: 10px; font-variant-numeric: tabular-nums; }
+.cut .note { display: block; color: var(--muted); font-size: 12px; }
+.flag { display: inline-block; font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--accent); margin-left: 4px; }
+ul.notes { margin: 0; padding-left: 18px; color: var(--muted); font-size: 13px; display: grid; gap: 4px; }
+@media (max-width: 560px) { .tag { font-size: 10px; padding: 2px 5px; } .hint { display: none; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Tamara's room, 206 × 202 cm</h1>
+    <p class="sub">A 3D sketch of Yaakov's quoted layout, with the head shelves and the cabinet over the feet. Drag to orbit, scroll or pinch to zoom.</p>
+  </header>
+
+  <div class="controls" role="group" aria-label="Model options">
+    <div class="ctl"><span>Head of bed</span>
+      <div class="seg" id="seg-side">
+        <button id="side-L" data-v="L" aria-pressed="true">Left</button>
+        <button id="side-R" data-v="R" aria-pressed="false">Right</button>
+      </div>
+    </div>
+    <div class="ctl"><span>Finish</span>
+      <div class="seg" id="seg-finish">
+        <button id="fin-white" data-v="white" aria-pressed="true"><i class="swatch" style="background:#F1F0EB"></i>White</button>
+        <button id="fin-oak" data-v="oak" aria-pressed="false"><i class="swatch" style="background:#D6B285"></i>Light oak</button>
+        <button id="fin-grey" data-v="grey" aria-pressed="false"><i class="swatch" style="background:#C9CCC8"></i>Pale grey</button>
+      </div>
+    </div>
+    <div class="ctl"><span>View</span>
+      <div class="seg" id="seg-view">
+        <button id="view-above" data-v="above" aria-pressed="true">Above</button>
+        <button id="view-door" data-v="door" aria-pressed="false">From door</button>
+        <button id="view-window" data-v="window" aria-pressed="false">From window</button>
+      </div>
+    </div>
+    <label class="check"><input type="checkbox" id="dims" checked> Sizes</label>
+  </div>
+
+  <div class="grid">
+    <div class="stage" id="stage">
+      <canvas id="c" aria-label="3D model of the bedroom"></canvas>
+      <div class="labels" id="labels"></div>
+      <div class="hint">Walls nearest you hide automatically</div>
+      <div class="status" id="status" hidden>The 3D viewer needs WebGL, which this browser has turned off.</div>
+    </div>
+
+    <aside>
+      <div>
+        <h2>Cut list (cm, W × D × H)</h2>
+        <table class="cut" aria-label="Component sizes">
+          <tbody id="cutlist"></tbody>
+        </table>
+      </div>
+      <div>
+        <h2>Assumptions in this sketch</h2>
+        <ul class="notes">
+          <li>Platform top at 72 cm so a 20 cm mattress sits level with the 92 cm sill. The quote says "height of the window sill"; worth confirming which he means.</li>
+          <li>Head shelves use the 16 cm left over by a 190 cm mattress. The socket and USB plate are drawn on the side wall.</li>
+          <li>The cabinet over the feet stops at the window reveal and is not in the £4,286 quote. The air duct's position is not shown.</li>
+          <li>Wardrobe doors start 40 cm from the right-hand end, per the quote, so the desk sits in front of a fixed panel.</li>
+          <li>Door: 76 cm leaf hinged on the right, opening against the wardrobe side.</li>
+        </ul>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+const MODEL = {"room":[206.0,202.0,250.0],"boxes":[{"id":"floor","role":"floor","min":[-12.0,-12.0,-2.0],"max":[218.0,232.0,0.0],"group":"room"},{"id":"ceiling","role":"ceiling","min":[-12.0,-12.0,250.0],"max":[218.0,232.0,260.0]},{"id":"wall_left","role":"wall","min":[-12.0,-12.0,0.0],"max":[0.0,232.0,250.0]},{"id":"wall_right","role":"wall","min":[206.0,-12.0,0.0],"max":[218.0,232.0,250.0]},{"id":"wall_door_a","role":"wall","min":[0.0,-12.0,0.0],"max":[8.0,0.0,250.0],"group":"wall_door"},{"id":"wall_door_b","role":"wall","min":[84.0,-12.0,0.0],"max":[206.0,0.0,250.0],"group":"wall_door"},{"id":"wall_door_c","role":"wall","min":[8.0,-12.0,198.0],"max":[84.0,0.0,250.0],"group":"wall_door"},{"id":"wall_win_a","role":"wall","min":[0.0,202.0,0.0],"max":[62.0,232.0,250.0],"group":"wall_window"},{"id":"wall_win_b","role":"wall","min":[152.0,202.0,0.0],"max":[206.0,232.0,250.0],"group":"wall_window"},{"id":"wall_win_c","role":"wall","min":[62.0,202.0,0.0],"max":[152.0,232.0,90.0],"group":"wall_window"},{"id":"wall_win_d","role":"wall","min":[62.0,202.0,225.0],"max":[152.0,232.0,250.0],"group":"wall_window"},{"id":"sill","role":"trim","min":[62.0,202.0,90.0],"max":[152.0,222.0,92.0],"group":"window"},{"id":"frame_l","role":"trim","min":[62.0,222.0,92.0],"max":[68.0,229.0,225.0],"group":"window"},{"id":"frame_r","role":"trim","min":[146.0,222.0,92.0],"max":[152.0,229.0,225.0],"group":"window"},{"id":"frame_b","role":"trim","min":[62.0,222.0,92.0],"max":[152.0,229.0,98.0],"group":"window"},{"id":"frame_t","role":"trim","min":[62.0,222.0,219.0],"max":[152.0,229.0,225.0],"group":"window"},{"id":"frame_m","role":"trim","min":[62.0,222.0,186.0],"max":[152.0,229.0,192.0],"group":"window"},{"id":"glass","role":"glass","min":[68.0,225.0,98.0],"max":[146.0,225.6,219.0],"group":"window"},{"id":"skirting_0","role":"trim","min":[0.0,0.0,0.0],"max":[1.5,202.0,10.0],"group":"trim"},{"id":"skirting_1","role":"trim","min":[204.5,0.0,0.0],"max":[206.0,202.0,10.0],"group":"trim"},{"id":"skirting_2","role":"trim","min":[0.0,200.5,0.0],"max":[206.0,202.0,10.0],"group":"trim"},{"id":"skirting_3","role":"trim","min":[0.0,0.0,0.0],"max":[8.0,1.5,10.0],"group":"trim"},{"id":"lining_l","role":"trim","min":[6.0,-12.0,0.0],"max":[8.0,0.0,198.0],"group":"door"},{"id":"lining_r","role":"trim","min":[84.0,-12.0,0.0],"max":[86.0,0.0,198.0],"group":"door"},{"id":"lining_t","role":"trim","min":[6.0,-12.0,198.0],"max":[86.0,0.0,200.0],"group":"door"},{"id":"arch_l","role":"trim","min":[2.0,0.0,0.0],"max":[6.0,1.5,204.0],"group":"door"},{"id":"arch_t","role":"trim","min":[2.0,0.0,200.0],"max":[86.0,1.5,205.0],"group":"door"},{"id":"door_leaf","role":"trim","min":[80.5,0.5,0.5],"max":[84.0,76.5,197.5],"group":"door"},{"id":"door_handle","role":"metal","min":[74.5,66.0,98.0],"max":[80.5,72.0,100.0],"group":"door"},{"id":"bed_plinth","role":"carcass","min":[0.0,116.0,0.0],"max":[206.0,202.0,8.0],"group":"bed"},{"id":"bed_body","role":"carcass","min":[0.0,113.8,8.0],"max":[206.0,202.0,70.2],"group":"bed"},{"id":"bed_top","role":"front","min":[0.0,112.0,70.2],"max":[206.0,202.0,72.0],"group":"bed"},{"id":"drawer_1","role":"front","min":[0.3,112.0,8.3],"max":[51.42,113.8,69.9],"group":"drawers"},{"id":"drawer_1_pull","role":"metal","min":[17.86,109.6,62.0],"max":[33.86,112.0,63.2],"group":"drawers"},{"id":"drawer_2","role":"front","min":[51.72,112.0,8.3],"max":[102.85,113.8,69.9],"group":"drawers"},{"id":"drawer_2_pull","role":"metal","min":[69.29,109.6,62.0],"max":[85.29,112.0,63.2],"group":"drawers"},{"id":"drawer_3","role":"front","min":[103.15,112.0,8.3],"max":[154.27,113.8,69.9],"group":"drawers"},{"id":"drawer_3_pull","role":"metal","min":[120.71,109.6,62.0],"max":[136.71,112.0,63.2],"group":"drawers"},{"id":"drawer_4","role":"front","min":[154.57,112.0,8.3],"max":[205.7,113.8,69.9],"group":"drawers"},{"id":"drawer_4_pull","role":"metal","min":[172.14,109.6,62.0],"max":[188.14,112.0,63.2],"group":"drawers"},{"id":"mattress_L","role":"mattress","min":[16.5,113.0,72.0],"max":[205.5,201.0,92.0],"when":"L","group":"mattress","soft":true},{"id":"duvet_L","role":"duvet","min":[58.0,110.5,87.0],"max":[206.5,201.5,97.0],"when":"L","group":"bedding","soft":true},{"id":"pillow_L","role":"pillow","min":[20.0,120.0,91.0],"max":[56.0,194.0,103.0],"when":"L","group":"bedding","soft":true},{"id":"head_front_L","role":"front","min":[0.0,112.0,72.0],"max":[16.0,113.8,200.0],"when":"L","group":"head_shelves"},{"id":"head_shelf_L_0","role":"carcass","min":[0.0,113.8,72.0],"max":[16.0,202.0,73.8],"when":"L","group":"head_shelves"},{"id":"head_shelf_L_1","role":"front","min":[0.0,113.8,104.0],"max":[16.0,202.0,105.8],"when":"L","group":"head_shelves"},{"id":"head_shelf_L_2","role":"front","min":[0.0,113.8,136.0],"max":[16.0,202.0,137.8],"when":"L","group":"head_shelves"},{"id":"head_shelf_L_3","role":"front","min":[0.0,113.8,168.0],"max":[16.0,202.0,169.8],"when":"L","group":"head_shelves"},{"id":"head_shelf_L_4","role":"front","min":[0.0,113.8,198.2],"max":[16.0,202.0,200.0],"when":"L","group":"head_shelves"},{"id":"socket_L","role":"socket","min":[0.0,150.0,78.0],"max":[0.9,164.0,86.5],"when":"L","group":"head_shelves"},{"id":"lamp_base_L","role":"lampbase","min":[3.0,128.0,73.8],"max":[13.0,138.0,76.8],"when":"L","group":"props"},{"id":"lamp_shade_L","role":"lampshade","min":[2.5,127.5,82.8],"max":[13.5,138.5,92.8],"when":"L","group":"props"},{"id":"lamp_stem_L","role":"metal","min":[7.5,132.5,76.8],"max":[8.5,133.5,82.8],"when":"L","group":"props"},{"id":"book_L_0","role":"book1","min":[2.0,132.0,105.8],"max":[14.0,135.0,127.8],"when":"L","group":"props"},{"id":"book_L_1","role":"book2","min":[2.0,135.3,105.8],"max":[14.0,137.8,129.8],"when":"L","group":"props"},{"id":"book_L_2","role":"book3","min":[2.0,138.1,105.8],"max":[14.0,142.1,125.8],"when":"L","group":"props"},{"id":"book_L_3","role":"book1","min":[2.0,142.4,105.8],"max":[14.0,144.4,128.8],"when":"L","group":"props"},{"id":"book_L_4","role":"book2","min":[2.0,144.7,105.8],"max":[14.0,148.2,126.8],"when":"L","group":"props"},{"id":"cab_body_L","role":"carcass","min":[153.0,113.8,190.0],"max":[206.0,202.0,250.0],"when":"L","group":"overhead_cabinet"},{"id":"cab_door_L_0","role":"front","min":[153.15,112.0,190.0],"max":[179.35,113.8,249.7],"when":"L","group":"overhead_cabinet"},{"id":"cab_door_L_1","role":"front","min":[179.65,112.0,190.0],"max":[205.85,113.8,249.7],"when":"L","group":"overhead_cabinet"},{"id":"cab_pull_L_0","role":"metal","min":[176.0,109.6,193.0],"max":[177.2,112.0,205.0],"when":"L","group":"overhead_cabinet"},{"id":"cab_pull_L_1","role":"metal","min":[181.8,109.6,193.0],"max":[183.0,112.0,205.0],"when":"L","group":"overhead_cabinet"},{"id":"mattress_R","role":"mattress","min":[0.5,113.0,72.0],"max":[189.5,201.0,92.0],"when":"R","group":"mattress","soft":true},{"id":"duvet_R","role":"duvet","min":[-0.5,110.5,87.0],"max":[148.0,201.5,97.0],"when":"R","group":"bedding","soft":true},{"id":"pillow_R","role":"pillow","min":[150.0,120.0,91.0],"max":[186.0,194.0,103.0],"when":"R","group":"bedding","soft":true},{"id":"head_front_R","role":"front","min":[190.0,112.0,72.0],"max":[206.0,113.8,200.0],"when":"R","group":"head_shelves"},{"id":"head_shelf_R_0","role":"carcass","min":[190.0,113.8,72.0],"max":[206.0,202.0,73.8],"when":"R","group":"head_shelves"},{"id":"head_shelf_R_1","role":"front","min":[190.0,113.8,104.0],"max":[206.0,202.0,105.8],"when":"R","group":"head_shelves"},{"id":"head_shelf_R_2","role":"front","min":[190.0,113.8,136.0],"max":[206.0,202.0,137.8],"when":"R","group":"head_shelves"},{"id":"head_shelf_R_3","role":"front","min":[190.0,113.8,168.0],"max":[206.0,202.0,169.8],"when":"R","group":"head_shelves"},{"id":"head_shelf_R_4","role":"front","min":[190.0,113.8,198.2],"max":[206.0,202.0,200.0],"when":"R","group":"head_shelves"},{"id":"socket_R","role":"socket","min":[205.1,150.0,78.0],"max":[206.0,164.0,86.5],"when":"R","group":"head_shelves"},{"id":"lamp_base_R","role":"lampbase","min":[193.0,128.0,73.8],"max":[203.0,138.0,76.8],"when":"R","group":"props"},{"id":"lamp_shade_R","role":"lampshade","min":[192.5,127.5,82.8],"max":[203.5,138.5,92.8],"when":"R","group":"props"},{"id":"lamp_stem_R","role":"metal","min":[197.5,132.5,76.8],"max":[198.5,133.5,82.8],"when":"R","group":"props"},{"id":"book_R_0","role":"book1","min":[192.0,132.0,105.8],"max":[204.0,135.0,127.8],"when":"R","group":"props"},{"id":"book_R_1","role":"book2","min":[192.0,135.3,105.8],"max":[204.0,137.8,129.8],"when":"R","group":"props"},{"id":"book_R_2","role":"book3","min":[192.0,138.1,105.8],"max":[204.0,142.1,125.8],"when":"R","group":"props"},{"id":"book_R_3","role":"book1","min":[192.0,142.4,105.8],"max":[204.0,144.4,128.8],"when":"R","group":"props"},{"id":"book_R_4","role":"book2","min":[192.0,144.7,105.8],"max":[204.0,148.2,126.8],"when":"R","group":"props"},{"id":"cab_body_R","role":"carcass","min":[0.0,113.8,190.0],"max":[61.0,202.0,250.0],"when":"R","group":"overhead_cabinet"},{"id":"cab_door_R_0","role":"front","min":[0.15,112.0,190.0],"max":[30.35,113.8,249.7],"when":"R","group":"overhead_cabinet"},{"id":"cab_door_R_1","role":"front","min":[30.65,112.0,190.0],"max":[60.85,113.8,249.7],"when":"R","group":"overhead_cabinet"},{"id":"cab_pull_R_0","role":"metal","min":[27.0,109.6,193.0],"max":[28.2,112.0,205.0],"when":"R","group":"overhead_cabinet"},{"id":"cab_pull_R_1","role":"metal","min":[32.8,109.6,193.0],"max":[34.0,112.0,205.0],"when":"R","group":"overhead_cabinet"},{"id":"ward_body","role":"carcass","min":[86.0,0.0,8.0],"max":[206.0,53.2,250.0],"group":"wardrobe"},{"id":"ward_plinth","role":"carcass","min":[86.0,0.0,0.0],"max":[206.0,52.0,8.0],"group":"wardrobe"},{"id":"ward_door_shelves","role":"front","min":[86.15,53.2,8.3],"max":[125.85,55.0,207.7],"group":"wardrobe"},{"id":"ward_door_hanging","role":"front","min":[126.15,53.2,8.3],"max":[165.85,55.0,207.7],"group":"wardrobe"},{"id":"ward_fixed_panel","role":"front","min":[166.15,53.2,8.3],"max":[205.85,55.0,207.7],"group":"wardrobe"},{"id":"ward_top_1","role":"front","min":[86.15,53.2,208.0],"max":[125.85,55.0,249.7],"group":"wardrobe"},{"id":"ward_top_2","role":"front","min":[126.15,53.2,208.0],"max":[165.85,55.0,249.7],"group":"wardrobe"},{"id":"ward_top_3","role":"front","min":[166.15,53.2,208.0],"max":[205.85,55.0,249.7],"group":"wardrobe"},{"id":"ward_pull_1","role":"metal","min":[122.0,55.0,95.0],"max":[123.2,57.4,125.0],"group":"wardrobe"},{"id":"ward_pull_2","role":"metal","min":[128.8,55.0,95.0],"max":[130.0,57.4,125.0],"group":"wardrobe"},{"id":"ward_top_pull_1","role":"metal","min":[122.0,55.0,210.0],"max":[123.2,57.4,220.0],"group":"wardrobe"},{"id":"ward_top_pull_2","role":"metal","min":[128.8,55.0,210.0],"max":[130.0,57.4,220.0],"group":"wardrobe"},{"id":"desk_top","role":"desktop","min":[166.0,55.0,72.5],"max":[206.0,112.0,75.5],"group":"desk"},{"id":"mirror","role":"mirror","min":[205.4,62.0,95.0],"max":[206.0,105.0,180.0],"group":"desk"},{"id":"mirror_frame","role":"front","min":[205.5,61.0,94.0],"max":[206.0,106.0,181.0],"group":"desk"},{"id":"sill_cushion","role":"cushion","min":[66.0,203.0,92.0],"max":[148.0,219.0,101.0],"group":"props","soft":true}]};
+const W = 206, D = 202, H = 250;
+const state = { side: "L", finish: "white", view: "above", dims: true };
+
+const CUT = {
+  L: { cab: "53 × 90 × 60" }, R: { cab: "61 × 90 × 60" }
+};
+function renderCutList() {
+  const rows = [
+    ["Bed platform", "Wall to wall, 4 heavy-duty drawers, each about 51 cm wide", "206 × 90 × 72"],
+    ["Mattress", "Standard single; top level with the sill", "190 × 90 × 20"],
+    ["Head shelves", "Ledge plus 3 shelves, socket and USB", "16 × 90 × 128"],
+    ["Cabinet over feet", "98 cm clear above the mattress", CUT[state.side].cab, true],
+    ["Wardrobe", "To the ceiling; shelves, tall hanging, top boxes above 208", "120 × 55 × 250"],
+    ["Desk", "Between wardrobe and bed, top at 75", "57 × 40"],
+    ["Mirror", "On the wall above the desk", "43 × 85"],
+    ["Clear floor", "In front of the drawers, beside the desk", "166 × 57"],
+  ];
+  document.getElementById("cutlist").innerHTML = rows.map(r =>
+    `<tr><td>${r[0]}${r[3] ? '<span class="flag">not quoted</span>' : ""}<span class="note">${r[1]}</span></td><td>${r[2]}</td></tr>`).join("");
+}
+renderCutList();
+
+const stage = document.getElementById("stage");
+const canvas = document.getElementById("c");
+let renderer;
+try {
+  if (!window.THREE) throw new Error("three.js did not load");
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+} catch (e) {
+  document.getElementById("status").hidden = false;
+  document.getElementById("status").textContent = "The 3D viewer could not start (" + e.message + "). Try another browser.";
+}
+
+if (renderer) {
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.outputEncoding = THREE.sRGBEncoding;
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(45, 4 / 3, 1, 5000);
+  const controls = new THREE.OrbitControls(camera, canvas);
+  controls.enableDamping = true; controls.dampingFactor = 0.08;
+
+  // model coordinates (cm): x right, y from door to window, z up  ->  three: (x, z, -y)
+  const P = (x, y, z) => new THREE.Vector3(x, z, -y);
+
+  const FIN = {
+    white: { front: "#F1F0EB", carcass: "#F1F0EB", desktop: "#F1F0EB" },
+    oak:   { front: "#D6B285", carcass: "#F1F0EB", desktop: "#D6B285" },
+    grey:  { front: "#C9CCC8", carcass: "#F1F0EB", desktop: "#C9CCC8" },
+  };
+  const COL = {
+    wall: "#A9CC3C", ceiling: "#F3F3EF", floor: "#8C8F93", trim: "#F7F7F4", metal: "#9DA1A5",
+    mirror: "#C9D6DE", glass: "#CFE3F2", mattress: "#EEEEEA", duvet: "#9FB4C3", pillow: "#F6F6F4",
+    cushion: "#5E7F86", socket: "#FFFFFF", lampbase: "#3B3B3B", lampshade: "#FFF0D2",
+    book1: "#3D5A73", book2: "#C9A646", book3: "#8B4A4A",
+  };
+  const mats = {};
+  function mat(role) {
+    if (!mats[role]) {
+      const m = new THREE.MeshStandardMaterial({ roughness: 0.85, metalness: 0 });
+      if (role === "glass") { m.transparent = true; m.opacity = 0.35; }
+      if (role === "mirror") { m.roughness = 0.15; m.metalness = 0.6; }
+      if (role === "metal") { m.roughness = 0.35; m.metalness = 0.7; }
+      if (role === "lampshade") { m.emissive = new THREE.Color("#FFD9A0"); m.emissiveIntensity = 0.5; }
+      mats[role] = m;
+    }
+    return mats[role];
+  }
+  function applyFinish() {
+    for (const [role, hex] of Object.entries(COL)) mat(role).color.set(hex).convertSRGBToLinear();
+    for (const [role, hex] of Object.entries(FIN[state.finish])) mat(role).color.set(hex).convertSRGBToLinear();
+  }
+  const edgeMat = new THREE.LineBasicMaterial({ color: 0x2b2f27, transparent: true, opacity: 0.28 });
+
+  const groups = {};   // wall groups for auto-hiding
+  const bySide = { L: [], R: [] };
+  for (const b of MODEL.boxes) {
+    const [x0, y0, z0] = b.min, [x1, y1, z1] = b.max;
+    const g = new THREE.BoxGeometry(x1 - x0, z1 - z0, y1 - y0);
+    const mesh = new THREE.Mesh(g, mat(b.role));
+    mesh.position.copy(P((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2));
+    mesh.castShadow = !["glass", "wall", "ceiling", "floor"].includes(b.role);
+    mesh.receiveShadow = true;
+    const obj = new THREE.Group(); obj.add(mesh);
+    const structural = ["wall", "ceiling", "floor", "glass"].includes(b.role) || b.soft;
+    if (!structural) {
+      const e = new THREE.LineSegments(new THREE.EdgesGeometry(g), edgeMat);
+      e.position.copy(mesh.position); obj.add(e);
+    }
+    scene.add(obj);
+    const grp = (b.id === "door_leaf" || b.id === "door_handle") ? "door_leaf" : (b.group || b.id);
+    (groups[grp] = groups[grp] || []).push(obj);
+    if (b.when) bySide[b.when].push(obj);
+  }
+  applyFinish();
+
+  scene.add(new THREE.HemisphereLight(0xffffff, 0xb8bfae, 0.75));
+  const sun = new THREE.DirectionalLight(0xfff4e4, 0.75);
+  sun.position.copy(P(30, 520, 420)); sun.target.position.copy(P(103, 101, 0));
+  sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+  Object.assign(sun.shadow.camera, { left: -260, right: 260, top: 260, bottom: -260, near: 50, far: 1400 });
+  sun.shadow.bias = -0.0005;
+  scene.add(sun, sun.target);
+  const fill = new THREE.DirectionalLight(0xffffff, 0.25); fill.position.copy(P(-200, -300, 300)); scene.add(fill);
+
+  function setBackground() {
+    const c = getComputedStyle(document.documentElement).getPropertyValue("--stage").trim() || "#E9EBE4";
+    scene.background = new THREE.Color(c);
+  }
+  setBackground();
+  if (window.matchMedia) matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", setBackground);
+  new MutationObserver(setBackground).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+  function applySide() {
+    for (const s of ["L", "R"]) for (const o of bySide[s]) o.userData.sideOn = (s === state.side);
+  }
+  applySide();
+
+  const VIEWS = {
+    above:  { pos: P(-165, 70, 390), tgt: P(112, 100, 30), fov: 38 },
+    door:   { pos: P(22, 64, 160), tgt: P(170, 165, 82), fov: 78 },
+    window: { pos: P(103, 236, 172), tgt: P(100, 10, 98), fov: 66 },
+  };
+  function setView(v) {
+    const V = VIEWS[v];
+    camera.fov = V.fov; camera.position.copy(V.pos); controls.target.copy(V.tgt);
+    camera.updateProjectionMatrix(); controls.update();
+  }
+  setView(state.view);
+
+  // walls on the camera's side of the room hide themselves
+  const HIDE_RULES = [
+    ["wall_left", p => p.x < 0], ["wall_right", p => p.x > W],
+    ["wall_door", p => -p.z < 0], ["door", p => -p.z < -8],
+    ["wall_window", p => -p.z > D], ["ceiling", p => p.y > H],
+    ["door_leaf", p => p.x < 86 && -p.z > 0 && -p.z < 80],
+  ];
+  function updateVisibility() {
+    const p = camera.position;
+    const hidden = new Set(HIDE_RULES.filter(([, f]) => f(p)).map(([g]) => g));
+    for (const [grp, objs] of Object.entries(groups)) {
+      for (const o of objs) {
+        const sideOk = o.userData.sideOn !== false;
+        o.visible = sideOk && !hidden.has(grp);
+      }
+    }
+  }
+
+  // size tags
+  const labelsEl = document.getElementById("labels");
+  function tags() {
+    const L = state.side === "L";
+    return [
+      { at: [103, 112, 40], html: "Drawers <b>4 × 51</b>" },
+      { at: [L ? 110 : 96, 157, 96], html: "Bed <b>190 × 90</b>, top 92" },
+      { at: [L ? 8 : 198, 112, 205], html: "Head shelves <b>16</b> wide" },
+      { at: [L ? 179 : 30, 112, 220], html: "Over-feet cabinet <b>" + (L ? 53 : 61) + " × 90</b>" },
+      { at: [126, 55, 150], html: "Wardrobe <b>120 × 55</b>" },
+      { at: [186, 84, 76], html: "Desk <b>57 × 40</b>" },
+      { at: [83, 84, 2], html: "Floor <b>166 × 57</b>" },
+    ];
+  }
+  let tagEls = [];
+  function buildTags() {
+    labelsEl.innerHTML = "";
+    tagEls = tags().map(t => {
+      const el = document.createElement("div"); el.className = "tag"; el.innerHTML = t.html;
+      labelsEl.appendChild(el); return { el, v: P(...t.at) };
+    });
+  }
+  buildTags();
+  const tmp = new THREE.Vector3();
+  function placeTags() {
+    labelsEl.hidden = !state.dims;
+    if (!state.dims) return;
+    const w = stage.clientWidth, h = stage.clientHeight;
+    for (const t of tagEls) {
+      tmp.copy(t.v).project(camera);
+      const on = tmp.z < 1 && Math.abs(tmp.x) < 1.05 && Math.abs(tmp.y) < 1.05;
+      t.el.style.display = on ? "" : "none";
+      if (on) { t.el.style.left = ((tmp.x + 1) / 2 * w) + "px"; t.el.style.top = ((1 - tmp.y) / 2 * h) + "px"; }
+    }
+  }
+
+  function resize() {
+    const w = stage.clientWidth, h = stage.clientHeight;
+    renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+  }
+  new ResizeObserver(resize).observe(stage); resize();
+
+  (function loop() {
+    controls.update(); updateVisibility(); renderer.render(scene, camera); placeTags();
+    requestAnimationFrame(loop);
+  })();
+
+  function wireSeg(id, key, after) {
+    const seg = document.getElementById(id);
+    seg.addEventListener("click", e => {
+      const btn = e.target.closest("button"); if (!btn) return;
+      state[key] = btn.dataset.v;
+      for (const b of seg.querySelectorAll("button")) b.setAttribute("aria-pressed", String(b === btn));
+      after();
+    });
+  }
+  wireSeg("seg-side", "side", () => { applySide(); buildTags(); renderCutList(); });
+  wireSeg("seg-finish", "finish", applyFinish);
+  wireSeg("seg-view", "view", () => setView(state.view));
+  document.getElementById("dims").addEventListener("change", e => { state.dims = e.target.checked; });
+}
+</script>
+
+</body></html>
