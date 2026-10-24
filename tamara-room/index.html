@@ -57,7 +57,7 @@ h1 { font-family: var(--font-display); font-weight: 800; font-size: clamp(1.5rem
 .controls { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; }
 .ctl { display: flex; align-items: center; gap: 8px; }
 .ctl > span { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
-.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; background: var(--panel); }
+.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; background: var(--panel); }
 .seg button { font: inherit; font-size: 13.5px; border: 0; background: transparent; color: var(--ink); padding: 6px 11px; cursor: pointer; }
 .seg button + button { border-left: 1px solid var(--line); }
 .seg button[aria-pressed="true"] { background: var(--accent-soft); color: var(--ink); font-weight: 700; box-shadow: inset 0 -2px 0 var(--accent); }
@@ -80,7 +80,7 @@ ul.notes { margin: 0; padding-left: 18px; color: var(--muted); font-size: 13px; 
 <div class="wrap">
   <header>
     <h1>Tamara's room, 206 × 202 cm</h1>
-    <p class="sub">A 3D sketch of Yaakov's quoted layout, with the head shelves and the cabinet over the feet. Drag to orbit, scroll or pinch to zoom.</p>
+    <p class="sub">A 3D sketch of Yaakov's quoted layout, with the head shelves and the cabinet over the feet. Look from above, or stand in the room and look around.</p>
   </header>
 
   <div class="controls" role="group" aria-label="Model options">
@@ -97,11 +97,13 @@ ul.notes { margin: 0; padding-left: 18px; color: var(--muted); font-size: 13px; 
         <button id="fin-grey" data-v="grey" aria-pressed="false"><i class="swatch" style="background:#C9CCC8"></i>Pale grey</button>
       </div>
     </div>
-    <div class="ctl"><span>View</span>
+    <div class="ctl"><span>Where you are</span>
       <div class="seg" id="seg-view">
         <button id="view-above" data-v="above" aria-pressed="true">Above</button>
-        <button id="view-door" data-v="door" aria-pressed="false">From door</button>
-        <button id="view-window" data-v="window" aria-pressed="false">From window</button>
+        <button id="view-doorway" data-v="doorway" aria-pressed="false">Doorway</button>
+        <button id="view-drawers" data-v="drawers" aria-pressed="false">By the drawers</button>
+        <button id="view-desk" data-v="desk" aria-pressed="false">At the desk</button>
+        <button id="view-bed" data-v="bed" aria-pressed="false">On the bed</button>
       </div>
     </div>
     <label class="check"><input type="checkbox" id="dims" checked> Sizes</label>
@@ -111,7 +113,7 @@ ul.notes { margin: 0; padding-left: 18px; color: var(--muted); font-size: 13px; 
     <div class="stage" id="stage">
       <canvas id="c" aria-label="3D model of the bedroom"></canvas>
       <div class="labels" id="labels"></div>
-      <div class="hint">Walls nearest you hide automatically</div>
+      <div class="hint" id="hint"></div>
       <div class="status" id="status" hidden>The 3D viewer needs WebGL, which this browser has turned off.</div>
     </div>
 
@@ -217,6 +219,8 @@ if (renderer) {
   const edgeMat = new THREE.LineBasicMaterial({ color: 0x2b2f27, transparent: true, opacity: 0.28 });
 
   const groups = {};   // wall groups for auto-hiding
+  const units = {};    // unit name -> its meshes, for fading what is in the way
+  const allMeshes = [];
   const bySide = { L: [], R: [] };
   for (const b of MODEL.boxes) {
     const [x0, y0, z0] = b.min, [x1, y1, z1] = b.max;
@@ -227,12 +231,16 @@ if (renderer) {
     mesh.receiveShadow = true;
     const obj = new THREE.Group(); obj.add(mesh);
     const structural = ["wall", "ceiling", "floor", "glass"].includes(b.role) || b.soft;
+    let edges = null;
     if (!structural) {
-      const e = new THREE.LineSegments(new THREE.EdgesGeometry(g), edgeMat);
-      e.position.copy(mesh.position); obj.add(e);
+      edges = new THREE.LineSegments(new THREE.EdgesGeometry(g), edgeMat);
+      edges.position.copy(mesh.position); obj.add(edges);
     }
     scene.add(obj);
     const grp = (b.id === "door_leaf" || b.id === "door_handle") ? "door_leaf" : (b.group || b.id);
+    mesh.userData = { role: b.role, unit: grp, obj };
+    allMeshes.push(mesh);
+    (units[grp] = units[grp] || []).push({ mesh, edges });
     (groups[grp] = groups[grp] || []).push(obj);
     if (b.when) bySide[b.when].push(obj);
   }
@@ -260,17 +268,151 @@ if (renderer) {
   }
   applySide();
 
-  const VIEWS = {
-    above:  { pos: P(-165, 70, 390), tgt: P(112, 100, 30), fov: 38 },
-    door:   { pos: P(22, 64, 160), tgt: P(170, 165, 82), fov: 78 },
-    window: { pos: P(103, 236, 172), tgt: P(100, 10, 98), fov: 66 },
+  // ---- where you are ----
+  // "above" orbits round a point; the other places put you at eye height and you look around.
+  const EYE = 155;
+  const PLACES = {
+    doorway: { at: [46, 26, EYE], look: [90, 202, 85] },
+    drawers: { at: [62, 86, EYE], look: [L => L ? 70 : 136, 202, 108] },
+    desk:    { at: [140, 84, 118], look: [206, 84, 120] },
+    bed:     { at: [103, 168, 162], look: [103, 0, 115] },
   };
-  function setView(v) {
-    const V = VIEWS[v];
-    camera.fov = V.fov; camera.position.copy(V.pos); controls.target.copy(V.tgt);
-    camera.updateProjectionMatrix(); controls.update();
+  const ABOVE = { pos: P(-165, 70, 390), tgt: P(112, 100, 30), fov: 38 };
+  let tween = null;
+  function flyTo(pos, tgt, ms = 450) {
+    const reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduce || ms === 0) { camera.position.copy(pos); controls.target.copy(tgt); controls.update(); return; }
+    tween = { p0: camera.position.clone(), t0: controls.target.clone(), p1: pos.clone(), t1: tgt.clone(), start: performance.now(), ms };
   }
-  setView(state.view);
+  function stepTween(now) {
+    if (!tween) return;
+    let k = Math.min(1, (now - tween.start) / tween.ms); k = k * k * (3 - 2 * k);
+    camera.position.lerpVectors(tween.p0, tween.p1, k);
+    controls.target.lerpVectors(tween.t0, tween.t1, k);
+    if (k >= 1) tween = null;
+  }
+  function standing() { return state.view !== "above"; }
+  function configureControls() {
+    if (standing()) {
+      controls.enableZoom = false; controls.enablePan = false; controls.rotateSpeed = 0.35;
+      controls.minPolarAngle = 0.15; controls.maxPolarAngle = Math.PI - 0.15;
+    } else {
+      controls.enableZoom = true; controls.enablePan = true; controls.rotateSpeed = 1;
+      controls.minPolarAngle = 0; controls.maxPolarAngle = Math.PI;
+    }
+    document.getElementById("hint").textContent = standing()
+      ? "Drag to look around. Double-click the floor to walk there, or anything else to turn to it."
+      : "Drag to orbit, right-drag to slide. Double-click anything to centre on it. Faded units are in your way.";
+  }
+  function lookFrom(eye, lookAt, ms) {
+    const dir = lookAt.clone().sub(eye).normalize();
+    flyTo(eye, eye.clone().add(dir), ms);
+  }
+  function setView(v, ms = 450) {
+    state.view = v;
+    configureControls();
+    if (v === "above") {
+      camera.fov = ABOVE.fov; camera.updateProjectionMatrix(); flyTo(ABOVE.pos, ABOVE.tgt, ms); return;
+    }
+    const pl = PLACES[v];
+    const look = pl.look.map(c => typeof c === "function" ? c(state.side === "L") : c);
+    camera.fov = 72; camera.updateProjectionMatrix();
+    lookFrom(P(...pl.at), P(...look), ms);
+  }
+  setView("above", 0);
+
+  // wheel zoom while standing changes the lens rather than moving you through the furniture
+  canvas.addEventListener("wheel", e => {
+    if (!standing()) return;
+    e.preventDefault();
+    camera.fov = Math.max(35, Math.min(95, camera.fov + Math.sign(e.deltaY) * 4));
+    camera.updateProjectionMatrix();
+  }, { passive: false });
+
+  // standing room: the floor not covered by units (model cm), with a little clearance
+  function canStand(x, y) {
+    const open = (x >= 12 && x <= 158 && y >= 64 && y <= 104);
+    const doorway = (x >= 18 && x <= 76 && y >= 12 && y <= 64);
+    return open || doorway;
+  }
+
+  // ---- fade whatever sits between you and what you are looking at ----
+  const ghostMat = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.12, depthWrite: false });
+  const ghostEdge = new THREE.LineBasicMaterial({ color: 0x2b2f27, transparent: true, opacity: 0.5 });
+  const NEVER_FADE = new Set(["room", "trim", "window", "bedding", "mattress", "props"]);
+  const ray = new THREE.Raycaster();
+  const ghosted = new Set();
+  const offs = [[0, 0], [22, 0], [-22, 0], [0, 22], [0, -22]];
+  const right = new THREE.Vector3(), up = new THREE.Vector3(), aim = new THREE.Vector3(), dir = new THREE.Vector3();
+  function updateGhosts() {
+    const want = new Set();
+    if (!standing()) {
+      const vis = allMeshes.filter(m => m.userData.obj.visible);
+      camera.matrixWorld.extractBasis(right, up, dir);
+      for (const [ox, oy] of offs) {
+        aim.copy(controls.target).addScaledVector(right, ox).addScaledVector(up, oy);
+        dir.copy(aim).sub(camera.position); const dist = dir.length(); dir.normalize();
+        ray.set(camera.position, dir); ray.far = Math.max(0, dist - 12);
+        for (const h of ray.intersectObjects(vis, false)) {
+          const u = h.object.userData.unit;
+          if (!NEVER_FADE.has(u) && !u.startsWith("wall") && u !== "ceiling") want.add(u);
+        }
+      }
+    }
+    for (const u of ghosted) if (!want.has(u)) {
+      for (const { mesh, edges } of units[u]) { mesh.material = mat(mesh.userData.role); mesh.castShadow = true; if (edges) edges.material = edgeMat; }
+      ghosted.delete(u);
+    }
+    for (const u of want) if (!ghosted.has(u)) {
+      for (const { mesh, edges } of units[u]) { mesh.material = ghostMat; mesh.castShadow = false; if (edges) edges.material = ghostEdge; }
+      ghosted.add(u);
+    }
+  }
+
+  // ---- double-click (or double-tap) to centre, walk or turn ----
+  const ndc = new THREE.Vector2();
+  function pick(clientX, clientY) {
+    const r = canvas.getBoundingClientRect();
+    ndc.set(((clientX - r.left) / r.width) * 2 - 1, -((clientY - r.top) / r.height) * 2 + 1);
+    ray.setFromCamera(ndc, camera); ray.far = Infinity;
+    const hits = ray.intersectObjects(allMeshes.filter(m => m.userData.obj.visible && m.material !== ghostMat), false);
+    return hits[0] || null;
+  }
+  function onDouble(clientX, clientY) {
+    const hit = pick(clientX, clientY); if (!hit) return;
+    const pt = hit.point;
+    if (!standing()) {
+      const back = camera.position.clone().sub(controls.target);
+      const d = Math.min(back.length(), 230);
+      flyTo(pt.clone().add(back.normalize().multiplyScalar(d)), pt);
+      return;
+    }
+    const mx = pt.x, my = -pt.z;
+    if (hit.object.userData.role === "floor") {
+      if (canStand(mx, my)) {
+        const eye = P(mx, my, EYE);
+        const look = controls.target.clone().sub(camera.position).normalize();
+        flyTo(eye, eye.clone().add(look), 500);
+      } else {
+        flash("There is a unit there. Pick a clear patch of floor.");
+      }
+    } else {
+      lookFrom(camera.position.clone(), pt, 350);
+    }
+  }
+  canvas.addEventListener("dblclick", e => onDouble(e.clientX, e.clientY));
+  let lastTap = 0;
+  canvas.addEventListener("pointerup", e => {
+    if (e.pointerType !== "touch") return;
+    const now = performance.now();
+    if (now - lastTap < 320) { onDouble(e.clientX, e.clientY); lastTap = 0; } else lastTap = now;
+  });
+  let flashTimer = null;
+  function flash(msg) {
+    const h = document.getElementById("hint"); const prev = h.textContent;
+    h.textContent = msg; clearTimeout(flashTimer);
+    flashTimer = setTimeout(configureControls, 2200);
+  }
 
   // walls on the camera's side of the room hide themselves
   const HIDE_RULES = [
@@ -333,7 +475,8 @@ if (renderer) {
   new ResizeObserver(resize).observe(stage); resize();
 
   (function loop() {
-    controls.update(); updateVisibility(); renderer.render(scene, camera); placeTags();
+    stepTween(performance.now());
+    controls.update(); updateVisibility(); updateGhosts(); renderer.render(scene, camera); placeTags();
     requestAnimationFrame(loop);
   })();
 
@@ -346,9 +489,10 @@ if (renderer) {
       after();
     });
   }
-  wireSeg("seg-side", "side", () => { applySide(); buildTags(); renderCutList(); });
+  wireSeg("seg-side", "side", () => { applySide(); buildTags(); renderCutList(); if (state.view === "drawers") setView("drawers"); });
   wireSeg("seg-finish", "finish", applyFinish);
   wireSeg("seg-view", "view", () => setView(state.view));
+  controls.addEventListener("start", () => { tween = null; });
   document.getElementById("dims").addEventListener("change", e => { state.dims = e.target.checked; });
 }
 </script>
