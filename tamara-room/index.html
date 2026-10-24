@@ -5,7 +5,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
-/* Layout: one working screen. Model on the left, the joiner's cut list on the right; stacks on phones. */
+/* Layout: one working screen. Model on the left, the cut list on the right; stacks on phones. */
 :root {
   --bg: #F5F6F1;          /* off-white with a faint green bias, like primed MDF */
   --panel: #FFFFFF;
@@ -51,7 +51,7 @@ h1 { font-family: var(--font-display); font-weight: 800; font-size: clamp(1.5rem
   background: rgba(35, 39, 31, 0.86); color: #F4F7EC; padding: 3px 7px; border-radius: 4px; }
 .tag b { font-weight: 500; color: #CDEB7A; }
 .hint { position: absolute; left: 12px; bottom: 10px; font-size: 12px; color: var(--muted); background: var(--panel); padding: 3px 8px; border-radius: 4px; border: 1px solid var(--line); }
-.status[hidden] { display: none; }
+.status[hidden], .ctl[hidden] { display: none; }
 .status { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 14px; padding: 20px; text-align: center; }
 
 .controls { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; }
@@ -80,7 +80,7 @@ ul.notes { margin: 0; padding-left: 18px; color: var(--muted); font-size: 13px; 
 <div class="wrap">
   <header>
     <h1>Tamara's room, 206 × 202 cm</h1>
-    <p class="sub">A 3D sketch of Yaakov's quoted layout, with the head shelves and the cabinet over the feet. Look from above, or stand in the room and look around.</p>
+    <p class="sub">A 3D sketch of the planned layout, with the head shelves and the cabinet over the feet. Look from above, or stand in the room and look around.</p>
   </header>
 
   <div class="controls" role="group" aria-label="Model options">
@@ -106,6 +106,12 @@ ul.notes { margin: 0; padding-left: 18px; color: var(--muted); font-size: 13px; 
         <button id="view-bed" data-v="bed" aria-pressed="false">On the bed</button>
       </div>
     </div>
+    <div class="ctl" id="drag-ctl"><span>Drag to</span>
+      <div class="seg" id="seg-drag">
+        <button id="drag-turn" data-v="turn" aria-pressed="true">Turn</button>
+        <button id="drag-slide" data-v="slide" aria-pressed="false">Slide</button>
+      </div>
+    </div>
     <label class="check"><input type="checkbox" id="dims" checked> Sizes</label>
   </div>
 
@@ -127,10 +133,10 @@ ul.notes { margin: 0; padding-left: 18px; color: var(--muted); font-size: 13px; 
       <div>
         <h2>Assumptions in this sketch</h2>
         <ul class="notes">
-          <li>Platform top at 72 cm so a 20 cm mattress sits level with the 92 cm sill. The quote says "height of the window sill"; worth confirming which he means.</li>
+          <li>Platform top at 72 cm so a 20 cm mattress sits level with the 92 cm sill. The exact height is still to be confirmed.</li>
           <li>Head shelves use the 16 cm left over by a 190 cm mattress. The socket and USB plate are drawn on the side wall.</li>
-          <li>The cabinet over the feet stops at the window reveal and is not in the £4,286 quote. The air duct's position is not shown.</li>
-          <li>Wardrobe doors start 40 cm from the right-hand end, per the quote, so the desk sits in front of a fixed panel.</li>
+          <li>The cabinet over the feet stops at the window reveal. The air duct in that wall is not shown.</li>
+          <li>Wardrobe doors start 40 cm from the right-hand end, so the desk sits in front of a fixed panel.</li>
           <li>Door: 76 cm leaf hinged on the right, opening against the wardrobe side.</li>
         </ul>
       </div>
@@ -143,7 +149,7 @@ ul.notes { margin: 0; padding-left: 18px; color: var(--muted); font-size: 13px; 
 <script>
 const MODEL = {"room":[206.0,202.0,250.0],"boxes":[{"id":"floor","role":"floor","min":[-12.0,-12.0,-2.0],"max":[218.0,232.0,0.0],"group":"room"},{"id":"ceiling","role":"ceiling","min":[-12.0,-12.0,250.0],"max":[218.0,232.0,260.0]},{"id":"wall_left","role":"wall","min":[-12.0,-12.0,0.0],"max":[0.0,232.0,250.0]},{"id":"wall_right","role":"wall","min":[206.0,-12.0,0.0],"max":[218.0,232.0,250.0]},{"id":"wall_door_a","role":"wall","min":[0.0,-12.0,0.0],"max":[8.0,0.0,250.0],"group":"wall_door"},{"id":"wall_door_b","role":"wall","min":[84.0,-12.0,0.0],"max":[206.0,0.0,250.0],"group":"wall_door"},{"id":"wall_door_c","role":"wall","min":[8.0,-12.0,198.0],"max":[84.0,0.0,250.0],"group":"wall_door"},{"id":"wall_win_a","role":"wall","min":[0.0,202.0,0.0],"max":[62.0,232.0,250.0],"group":"wall_window"},{"id":"wall_win_b","role":"wall","min":[152.0,202.0,0.0],"max":[206.0,232.0,250.0],"group":"wall_window"},{"id":"wall_win_c","role":"wall","min":[62.0,202.0,0.0],"max":[152.0,232.0,90.0],"group":"wall_window"},{"id":"wall_win_d","role":"wall","min":[62.0,202.0,225.0],"max":[152.0,232.0,250.0],"group":"wall_window"},{"id":"sill","role":"trim","min":[62.0,202.0,90.0],"max":[152.0,222.0,92.0],"group":"window"},{"id":"frame_l","role":"trim","min":[62.0,222.0,92.0],"max":[68.0,229.0,225.0],"group":"window"},{"id":"frame_r","role":"trim","min":[146.0,222.0,92.0],"max":[152.0,229.0,225.0],"group":"window"},{"id":"frame_b","role":"trim","min":[62.0,222.0,92.0],"max":[152.0,229.0,98.0],"group":"window"},{"id":"frame_t","role":"trim","min":[62.0,222.0,219.0],"max":[152.0,229.0,225.0],"group":"window"},{"id":"frame_m","role":"trim","min":[62.0,222.0,186.0],"max":[152.0,229.0,192.0],"group":"window"},{"id":"glass","role":"glass","min":[68.0,225.0,98.0],"max":[146.0,225.6,219.0],"group":"window"},{"id":"skirting_0","role":"trim","min":[0.0,0.0,0.0],"max":[1.5,202.0,10.0],"group":"trim"},{"id":"skirting_1","role":"trim","min":[204.5,0.0,0.0],"max":[206.0,202.0,10.0],"group":"trim"},{"id":"skirting_2","role":"trim","min":[0.0,200.5,0.0],"max":[206.0,202.0,10.0],"group":"trim"},{"id":"skirting_3","role":"trim","min":[0.0,0.0,0.0],"max":[8.0,1.5,10.0],"group":"trim"},{"id":"lining_l","role":"trim","min":[6.0,-12.0,0.0],"max":[8.0,0.0,198.0],"group":"door"},{"id":"lining_r","role":"trim","min":[84.0,-12.0,0.0],"max":[86.0,0.0,198.0],"group":"door"},{"id":"lining_t","role":"trim","min":[6.0,-12.0,198.0],"max":[86.0,0.0,200.0],"group":"door"},{"id":"arch_l","role":"trim","min":[2.0,0.0,0.0],"max":[6.0,1.5,204.0],"group":"door"},{"id":"arch_t","role":"trim","min":[2.0,0.0,200.0],"max":[86.0,1.5,205.0],"group":"door"},{"id":"door_leaf","role":"trim","min":[80.5,0.5,0.5],"max":[84.0,76.5,197.5],"group":"door"},{"id":"door_handle","role":"metal","min":[74.5,66.0,98.0],"max":[80.5,72.0,100.0],"group":"door"},{"id":"bed_plinth","role":"carcass","min":[0.0,116.0,0.0],"max":[206.0,202.0,8.0],"group":"bed"},{"id":"bed_body","role":"carcass","min":[0.0,113.8,8.0],"max":[206.0,202.0,70.2],"group":"bed"},{"id":"bed_top","role":"front","min":[0.0,112.0,70.2],"max":[206.0,202.0,72.0],"group":"bed"},{"id":"drawer_1","role":"front","min":[0.3,112.0,8.3],"max":[51.42,113.8,69.9],"group":"drawers"},{"id":"drawer_1_pull","role":"metal","min":[17.86,109.6,62.0],"max":[33.86,112.0,63.2],"group":"drawers"},{"id":"drawer_2","role":"front","min":[51.72,112.0,8.3],"max":[102.85,113.8,69.9],"group":"drawers"},{"id":"drawer_2_pull","role":"metal","min":[69.29,109.6,62.0],"max":[85.29,112.0,63.2],"group":"drawers"},{"id":"drawer_3","role":"front","min":[103.15,112.0,8.3],"max":[154.27,113.8,69.9],"group":"drawers"},{"id":"drawer_3_pull","role":"metal","min":[120.71,109.6,62.0],"max":[136.71,112.0,63.2],"group":"drawers"},{"id":"drawer_4","role":"front","min":[154.57,112.0,8.3],"max":[205.7,113.8,69.9],"group":"drawers"},{"id":"drawer_4_pull","role":"metal","min":[172.14,109.6,62.0],"max":[188.14,112.0,63.2],"group":"drawers"},{"id":"mattress_L","role":"mattress","min":[16.5,113.0,72.0],"max":[205.5,201.0,92.0],"when":"L","group":"mattress","soft":true},{"id":"duvet_L","role":"duvet","min":[58.0,110.5,87.0],"max":[206.5,201.5,97.0],"when":"L","group":"bedding","soft":true},{"id":"pillow_L","role":"pillow","min":[20.0,120.0,91.0],"max":[56.0,194.0,103.0],"when":"L","group":"bedding","soft":true},{"id":"head_front_L","role":"front","min":[0.0,112.0,72.0],"max":[16.0,113.8,200.0],"when":"L","group":"head_shelves"},{"id":"head_shelf_L_0","role":"carcass","min":[0.0,113.8,72.0],"max":[16.0,202.0,73.8],"when":"L","group":"head_shelves"},{"id":"head_shelf_L_1","role":"front","min":[0.0,113.8,104.0],"max":[16.0,202.0,105.8],"when":"L","group":"head_shelves"},{"id":"head_shelf_L_2","role":"front","min":[0.0,113.8,136.0],"max":[16.0,202.0,137.8],"when":"L","group":"head_shelves"},{"id":"head_shelf_L_3","role":"front","min":[0.0,113.8,168.0],"max":[16.0,202.0,169.8],"when":"L","group":"head_shelves"},{"id":"head_shelf_L_4","role":"front","min":[0.0,113.8,198.2],"max":[16.0,202.0,200.0],"when":"L","group":"head_shelves"},{"id":"socket_L","role":"socket","min":[0.0,150.0,78.0],"max":[0.9,164.0,86.5],"when":"L","group":"head_shelves"},{"id":"lamp_base_L","role":"lampbase","min":[3.0,128.0,73.8],"max":[13.0,138.0,76.8],"when":"L","group":"props"},{"id":"lamp_shade_L","role":"lampshade","min":[2.5,127.5,82.8],"max":[13.5,138.5,92.8],"when":"L","group":"props"},{"id":"lamp_stem_L","role":"metal","min":[7.5,132.5,76.8],"max":[8.5,133.5,82.8],"when":"L","group":"props"},{"id":"book_L_0","role":"book1","min":[2.0,132.0,105.8],"max":[14.0,135.0,127.8],"when":"L","group":"props"},{"id":"book_L_1","role":"book2","min":[2.0,135.3,105.8],"max":[14.0,137.8,129.8],"when":"L","group":"props"},{"id":"book_L_2","role":"book3","min":[2.0,138.1,105.8],"max":[14.0,142.1,125.8],"when":"L","group":"props"},{"id":"book_L_3","role":"book1","min":[2.0,142.4,105.8],"max":[14.0,144.4,128.8],"when":"L","group":"props"},{"id":"book_L_4","role":"book2","min":[2.0,144.7,105.8],"max":[14.0,148.2,126.8],"when":"L","group":"props"},{"id":"cab_body_L","role":"carcass","min":[153.0,113.8,190.0],"max":[206.0,202.0,250.0],"when":"L","group":"overhead_cabinet"},{"id":"cab_door_L_0","role":"front","min":[153.15,112.0,190.0],"max":[179.35,113.8,249.7],"when":"L","group":"overhead_cabinet"},{"id":"cab_door_L_1","role":"front","min":[179.65,112.0,190.0],"max":[205.85,113.8,249.7],"when":"L","group":"overhead_cabinet"},{"id":"cab_pull_L_0","role":"metal","min":[176.0,109.6,193.0],"max":[177.2,112.0,205.0],"when":"L","group":"overhead_cabinet"},{"id":"cab_pull_L_1","role":"metal","min":[181.8,109.6,193.0],"max":[183.0,112.0,205.0],"when":"L","group":"overhead_cabinet"},{"id":"mattress_R","role":"mattress","min":[0.5,113.0,72.0],"max":[189.5,201.0,92.0],"when":"R","group":"mattress","soft":true},{"id":"duvet_R","role":"duvet","min":[-0.5,110.5,87.0],"max":[148.0,201.5,97.0],"when":"R","group":"bedding","soft":true},{"id":"pillow_R","role":"pillow","min":[150.0,120.0,91.0],"max":[186.0,194.0,103.0],"when":"R","group":"bedding","soft":true},{"id":"head_front_R","role":"front","min":[190.0,112.0,72.0],"max":[206.0,113.8,200.0],"when":"R","group":"head_shelves"},{"id":"head_shelf_R_0","role":"carcass","min":[190.0,113.8,72.0],"max":[206.0,202.0,73.8],"when":"R","group":"head_shelves"},{"id":"head_shelf_R_1","role":"front","min":[190.0,113.8,104.0],"max":[206.0,202.0,105.8],"when":"R","group":"head_shelves"},{"id":"head_shelf_R_2","role":"front","min":[190.0,113.8,136.0],"max":[206.0,202.0,137.8],"when":"R","group":"head_shelves"},{"id":"head_shelf_R_3","role":"front","min":[190.0,113.8,168.0],"max":[206.0,202.0,169.8],"when":"R","group":"head_shelves"},{"id":"head_shelf_R_4","role":"front","min":[190.0,113.8,198.2],"max":[206.0,202.0,200.0],"when":"R","group":"head_shelves"},{"id":"socket_R","role":"socket","min":[205.1,150.0,78.0],"max":[206.0,164.0,86.5],"when":"R","group":"head_shelves"},{"id":"lamp_base_R","role":"lampbase","min":[193.0,128.0,73.8],"max":[203.0,138.0,76.8],"when":"R","group":"props"},{"id":"lamp_shade_R","role":"lampshade","min":[192.5,127.5,82.8],"max":[203.5,138.5,92.8],"when":"R","group":"props"},{"id":"lamp_stem_R","role":"metal","min":[197.5,132.5,76.8],"max":[198.5,133.5,82.8],"when":"R","group":"props"},{"id":"book_R_0","role":"book1","min":[192.0,132.0,105.8],"max":[204.0,135.0,127.8],"when":"R","group":"props"},{"id":"book_R_1","role":"book2","min":[192.0,135.3,105.8],"max":[204.0,137.8,129.8],"when":"R","group":"props"},{"id":"book_R_2","role":"book3","min":[192.0,138.1,105.8],"max":[204.0,142.1,125.8],"when":"R","group":"props"},{"id":"book_R_3","role":"book1","min":[192.0,142.4,105.8],"max":[204.0,144.4,128.8],"when":"R","group":"props"},{"id":"book_R_4","role":"book2","min":[192.0,144.7,105.8],"max":[204.0,148.2,126.8],"when":"R","group":"props"},{"id":"cab_body_R","role":"carcass","min":[0.0,113.8,190.0],"max":[61.0,202.0,250.0],"when":"R","group":"overhead_cabinet"},{"id":"cab_door_R_0","role":"front","min":[0.15,112.0,190.0],"max":[30.35,113.8,249.7],"when":"R","group":"overhead_cabinet"},{"id":"cab_door_R_1","role":"front","min":[30.65,112.0,190.0],"max":[60.85,113.8,249.7],"when":"R","group":"overhead_cabinet"},{"id":"cab_pull_R_0","role":"metal","min":[27.0,109.6,193.0],"max":[28.2,112.0,205.0],"when":"R","group":"overhead_cabinet"},{"id":"cab_pull_R_1","role":"metal","min":[32.8,109.6,193.0],"max":[34.0,112.0,205.0],"when":"R","group":"overhead_cabinet"},{"id":"ward_body","role":"carcass","min":[86.0,0.0,8.0],"max":[206.0,53.2,250.0],"group":"wardrobe"},{"id":"ward_plinth","role":"carcass","min":[86.0,0.0,0.0],"max":[206.0,52.0,8.0],"group":"wardrobe"},{"id":"ward_door_shelves","role":"front","min":[86.15,53.2,8.3],"max":[125.85,55.0,207.7],"group":"wardrobe"},{"id":"ward_door_hanging","role":"front","min":[126.15,53.2,8.3],"max":[165.85,55.0,207.7],"group":"wardrobe"},{"id":"ward_fixed_panel","role":"front","min":[166.15,53.2,8.3],"max":[205.85,55.0,207.7],"group":"wardrobe"},{"id":"ward_top_1","role":"front","min":[86.15,53.2,208.0],"max":[125.85,55.0,249.7],"group":"wardrobe"},{"id":"ward_top_2","role":"front","min":[126.15,53.2,208.0],"max":[165.85,55.0,249.7],"group":"wardrobe"},{"id":"ward_top_3","role":"front","min":[166.15,53.2,208.0],"max":[205.85,55.0,249.7],"group":"wardrobe"},{"id":"ward_pull_1","role":"metal","min":[122.0,55.0,95.0],"max":[123.2,57.4,125.0],"group":"wardrobe"},{"id":"ward_pull_2","role":"metal","min":[128.8,55.0,95.0],"max":[130.0,57.4,125.0],"group":"wardrobe"},{"id":"ward_top_pull_1","role":"metal","min":[122.0,55.0,210.0],"max":[123.2,57.4,220.0],"group":"wardrobe"},{"id":"ward_top_pull_2","role":"metal","min":[128.8,55.0,210.0],"max":[130.0,57.4,220.0],"group":"wardrobe"},{"id":"desk_top","role":"desktop","min":[166.0,55.0,72.5],"max":[206.0,112.0,75.5],"group":"desk"},{"id":"mirror","role":"mirror","min":[205.4,62.0,95.0],"max":[206.0,105.0,180.0],"group":"desk"},{"id":"mirror_frame","role":"front","min":[205.5,61.0,94.0],"max":[206.0,106.0,181.0],"group":"desk"},{"id":"sill_cushion","role":"cushion","min":[66.0,203.0,92.0],"max":[148.0,219.0,101.0],"group":"props","soft":true}]};
 const W = 206, D = 202, H = 250;
-const state = { side: "L", finish: "white", view: "above", dims: true };
+const state = { side: "L", finish: "white", view: "above", dims: true, drag: "turn" };
 
 const CUT = {
   L: { cab: "53 × 90 × 60" }, R: { cab: "61 × 90 × 60" }
@@ -160,7 +166,7 @@ function renderCutList() {
     ["Clear floor", "In front of the drawers, beside the desk", "166 × 57"],
   ];
   document.getElementById("cutlist").innerHTML = rows.map(r =>
-    `<tr><td>${r[0]}${r[3] ? '<span class="flag">not quoted</span>' : ""}<span class="note">${r[1]}</span></td><td>${r[2]}</td></tr>`).join("");
+    `<tr><td>${r[0]}<span class="note">${r[1]}</span></td><td>${r[2]}</td></tr>`).join("");
 }
 renderCutList();
 
@@ -300,9 +306,15 @@ if (renderer) {
       controls.enableZoom = true; controls.enablePan = true; controls.rotateSpeed = 1;
       controls.minPolarAngle = 0; controls.maxPolarAngle = Math.PI;
     }
+    // one finger or one button does whatever "Drag to" says; two fingers always pinch and slide
+    const slide = !standing() && state.drag === "slide";
+    controls.mouseButtons.LEFT = slide ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE;
+    controls.touches.ONE = slide ? THREE.TOUCH.PAN : THREE.TOUCH.ROTATE;
+    controls.screenSpacePanning = true;
+    document.getElementById("drag-ctl").hidden = standing();
     document.getElementById("hint").textContent = standing()
-      ? "Drag to look around. Double-click the floor to walk there, or anything else to turn to it."
-      : "Drag to orbit, right-drag to slide. Double-click anything to centre on it. Faded units are in your way.";
+      ? "Drag to look around. Double-click (or double-tap) the floor to walk there, or anything else to turn to it."
+      : (slide ? "Drag to slide the view. Switch back to Turn to orbit." : "Drag to orbit. Double-click (or double-tap) anything to centre on it. Faded units are in your way.");
   }
   function lookFrom(eye, lookAt, ms) {
     const dir = lookAt.clone().sub(eye).normalize();
@@ -492,6 +504,7 @@ if (renderer) {
   wireSeg("seg-side", "side", () => { applySide(); buildTags(); renderCutList(); if (state.view === "drawers") setView("drawers"); });
   wireSeg("seg-finish", "finish", applyFinish);
   wireSeg("seg-view", "view", () => setView(state.view));
+  wireSeg("seg-drag", "drag", configureControls);
   controls.addEventListener("start", () => { tween = null; });
   document.getElementById("dims").addEventListener("change", e => { state.dims = e.target.checked; });
 }
