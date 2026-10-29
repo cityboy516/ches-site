@@ -5,7 +5,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
-/* Layout: one working screen. Model on the left, the cut list on the right; stacks on phones. */
+/* Layout: one working screen. Controls on top, model left, design notes right; stacks on phones. */
 :root {
   --bg: #F5F6F1;          /* off-white with a faint green bias, like primed MDF */
   --panel: #FFFFFF;
@@ -15,6 +15,7 @@
   --accent: #6E9A12;      /* lime, darkened enough for text */
   --accent-soft: #E7F0CF;
   --stage: #E9EBE4;
+  --warn: #9A5B12;
   --font-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
   --font-body: "Archivo", "Helvetica Neue", Arial, sans-serif;
   --font-data: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
@@ -22,12 +23,12 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #171A15; --panel: #1F231C; --ink: #E8EBE2; --muted: #A2A99A; --line: #343A2F;
-    --accent: #B3D85A; --accent-soft: #2C3820; --stage: #262A22; color-scheme: dark;
+    --accent: #B3D85A; --accent-soft: #2C3820; --stage: #262A22; --warn: #E0A35A; color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #171A15; --panel: #1F231C; --ink: #E8EBE2; --muted: #A2A99A; --line: #343A2F;
-  --accent: #B3D85A; --accent-soft: #2C3820; --stage: #262A22; color-scheme: dark;
+  --accent: #B3D85A; --accent-soft: #2C3820; --stage: #262A22; --warn: #E0A35A; color-scheme: dark;
 }
 * { box-sizing: border-box; }
 body {
@@ -36,43 +37,62 @@ body {
   padding-right: max(16px, env(safe-area-inset-right, 0px));
   padding-block: 20px 32px;
 }
-.wrap { max-width: 1280px; margin: 0 auto; display: grid; gap: 18px; }
+.wrap { max-width: 1320px; margin: 0 auto; display: grid; gap: 14px; }
 header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 24px; }
 h1 { font-family: var(--font-display); font-weight: 800; font-size: clamp(1.5rem, 3vw, 2.1rem); letter-spacing: -0.02em; margin: 0; text-wrap: balance; }
-.sub { color: var(--muted); margin: 0; max-width: 62ch; }
-.grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 18px; align-items: start; }
-@media (max-width: 900px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+.sub { color: var(--muted); margin: 0; max-width: 64ch; }
+.grid { display: grid; grid-template-columns: minmax(0, 1fr) 350px; gap: 18px; align-items: start; }
+@media (max-width: 920px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+
+.designs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+@media (max-width: 700px) { .designs { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.design { font: inherit; text-align: left; border: 1px solid var(--line); border-radius: 9px; background: var(--panel); color: var(--ink); padding: 9px 12px; cursor: pointer; display: grid; gap: 2px; }
+.design b { font-family: var(--font-display); font-weight: 800; font-size: 15px; }
+.design span { font-size: 12.5px; color: var(--muted); line-height: 1.35; }
+.design[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); background: var(--accent-soft); }
+.design:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 .stage { position: relative; background: var(--stage); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; aspect-ratio: 4 / 3; max-width: 100%; min-height: 300px; }
 .stage canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
-.stage canvas:active { cursor: grabbing; }
+.stage canvas.can-open { cursor: pointer; }
 .labels { position: absolute; inset: 0; pointer-events: none; }
 .tag { position: absolute; transform: translate(-50%, -50%); font-family: var(--font-data); font-size: 11.5px; line-height: 1.25; white-space: nowrap;
   background: rgba(35, 39, 31, 0.86); color: #F4F7EC; padding: 3px 7px; border-radius: 4px; }
 .tag b { font-weight: 500; color: #CDEB7A; }
-.hint { position: absolute; left: 12px; bottom: 10px; font-size: 12px; color: var(--muted); background: var(--panel); padding: 3px 8px; border-radius: 4px; border: 1px solid var(--line); }
+.hint { position: absolute; left: 12px; bottom: 10px; right: 12px; width: fit-content; max-width: calc(100% - 24px); font-size: 12px; color: var(--muted); background: var(--panel); padding: 3px 8px; border-radius: 4px; border: 1px solid var(--line); }
 .status[hidden], .ctl[hidden] { display: none; }
 .status { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 14px; padding: 20px; text-align: center; }
+.stage-actions { position: absolute; top: 10px; right: 10px; display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.btn { font: inherit; font-size: 13px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); padding: 5px 10px; border-radius: 6px; cursor: pointer; }
+.btn:hover { border-color: var(--accent); }
+.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 .controls { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; }
-.ctl { display: flex; align-items: center; gap: 8px; }
+.ctl { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .ctl > span { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
 .seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; background: var(--panel); }
 .seg button { font: inherit; font-size: 13.5px; border: 0; background: transparent; color: var(--ink); padding: 6px 11px; cursor: pointer; }
 .seg button + button { border-left: 1px solid var(--line); }
 .seg button[aria-pressed="true"] { background: var(--accent-soft); color: var(--ink); font-weight: 700; box-shadow: inset 0 -2px 0 var(--accent); }
-.seg button:focus-visible, .check input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.seg button:focus-visible, .check input:focus-visible, .chips button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .check { display: inline-flex; gap: 6px; align-items: center; font-size: 13.5px; cursor: pointer; }
-.swatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; margin-right: 5px; vertical-align: -1px; border: 1px solid rgba(0,0,0,.2); }
+.chips { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+.chips button { width: 26px; height: 26px; border-radius: 50%; border: 1px solid rgba(0,0,0,.25); cursor: pointer; padding: 0; }
+.chips button[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px var(--accent); }
+.chipname { font-size: 13px; color: var(--muted); min-width: 7ch; }
 
-aside { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px 16px 6px; display: grid; gap: 14px; min-width: 0; }
-aside h2 { font-family: var(--font-display); font-size: 1rem; font-weight: 800; margin: 0; }
-.cut { width: 100%; border-collapse: collapse; font-size: 13px; }
-.cut td { padding: 6px 0; border-top: 1px solid var(--line); vertical-align: top; }
-.cut td:last-child { font-family: var(--font-data); font-size: 12px; text-align: right; white-space: nowrap; padding-left: 10px; font-variant-numeric: tabular-nums; }
-.cut .note { display: block; color: var(--muted); font-size: 12px; }
-.flag { display: inline-block; font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--accent); margin-left: 4px; }
-ul.notes { margin: 0; padding-left: 18px; color: var(--muted); font-size: 13px; display: grid; gap: 4px; }
+aside { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px 16px 10px; display: grid; gap: 16px; min-width: 0; }
+aside h2 { font-family: var(--font-display); font-size: 1.15rem; font-weight: 800; margin: 0 0 4px; }
+aside h3 { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 0 0 6px; }
+aside p { margin: 0; font-size: 13.5px; }
+.kv { width: 100%; border-collapse: collapse; font-size: 13px; }
+.kv td { padding: 5px 0; border-top: 1px solid var(--line); vertical-align: top; }
+.kv td:last-child { font-family: var(--font-data); font-size: 12px; text-align: right; white-space: nowrap; padding-left: 10px; font-variant-numeric: tabular-nums; }
+ul.checks { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; font-size: 13px; }
+ul.checks li { padding-left: 20px; position: relative; }
+ul.checks li::before { content: ""; position: absolute; left: 3px; top: 6px; width: 9px; height: 9px; border-radius: 50%; background: var(--accent); }
+ul.checks li.warn::before { background: var(--warn); }
+ul.notes { margin: 0; padding-left: 18px; color: var(--muted); font-size: 12.5px; display: grid; gap: 3px; }
 @media (max-width: 560px) { .tag { font-size: 10px; padding: 2px 5px; } .hint { display: none; } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
@@ -80,28 +100,28 @@ ul.notes { margin: 0; padding-left: 18px; color: var(--muted); font-size: 13px; 
 <div class="wrap">
   <header>
     <h1>Tamara's room, 206 × 202 cm</h1>
-    <p class="sub">A 3D sketch of the planned layout, with the head shelves and the cabinet over the feet. Look from above, or stand in the room and look around.</p>
+    <p class="sub">Four ways to lay out the room. Pick a design, then click any door, drawer or sliding panel to open it.</p>
   </header>
 
+  <div class="designs" id="designs" role="group" aria-label="Design">
+    <button class="design" id="d-A" data-v="A" aria-pressed="true"><b>Current plan</b><span>Bed under the window, wardrobe by the door</span></button>
+    <button class="design" id="d-B" data-v="B" aria-pressed="false"><b>Daybed</b><span>Bed along the wall, desk under the window</span></button>
+    <button class="design" id="d-C" data-v="C" aria-pressed="false"><b>Mid-sleeper</b><span>Raised bed with a wardrobe underneath</span></button>
+    <button class="design" id="d-D" data-v="D" aria-pressed="false"><b>Sliding wardrobe</b><span>Bed under the window, desk by the door</span></button>
+  </div>
+
   <div class="controls" role="group" aria-label="Model options">
-    <div class="ctl"><span>Head of bed</span>
+    <div class="ctl" id="side-ctl"><span>Head of bed</span>
       <div class="seg" id="seg-side">
         <button id="side-L" data-v="L" aria-pressed="true">Left</button>
         <button id="side-R" data-v="R" aria-pressed="false">Right</button>
-      </div>
-    </div>
-    <div class="ctl"><span>Finish</span>
-      <div class="seg" id="seg-finish">
-        <button id="fin-white" data-v="white" aria-pressed="true"><i class="swatch" style="background:#F1F0EB"></i>White</button>
-        <button id="fin-oak" data-v="oak" aria-pressed="false"><i class="swatch" style="background:#D6B285"></i>Light oak</button>
-        <button id="fin-grey" data-v="grey" aria-pressed="false"><i class="swatch" style="background:#C9CCC8"></i>Pale grey</button>
       </div>
     </div>
     <div class="ctl"><span>Where you are</span>
       <div class="seg" id="seg-view">
         <button id="view-above" data-v="above" aria-pressed="true">Above</button>
         <button id="view-doorway" data-v="doorway" aria-pressed="false">Doorway</button>
-        <button id="view-drawers" data-v="drawers" aria-pressed="false">By the drawers</button>
+        <button id="view-middle" data-v="middle" aria-pressed="false">Middle</button>
         <button id="view-desk" data-v="desk" aria-pressed="false">At the desk</button>
         <button id="view-bed" data-v="bed" aria-pressed="false">On the bed</button>
       </div>
@@ -112,6 +132,11 @@ ul.notes { margin: 0; padding-left: 18px; color: var(--muted); font-size: 13px; 
         <button id="drag-slide" data-v="slide" aria-pressed="false">Slide</button>
       </div>
     </div>
+  </div>
+  <div class="controls" role="group" aria-label="Colours">
+    <div class="ctl"><span>Furniture</span><div class="chips" id="chips-fin"></div><span class="chipname" id="fin-name"></span></div>
+    <div class="ctl"><span>Walls</span><div class="chips" id="chips-wall"></div><span class="chipname" id="wall-name"></span></div>
+    <label class="check"><input type="checkbox" id="lamps" checked> Lamps on</label>
     <label class="check"><input type="checkbox" id="dims" checked> Sizes</label>
   </div>
 
@@ -119,25 +144,33 @@ ul.notes { margin: 0; padding-left: 18px; color: var(--muted); font-size: 13px; 
     <div class="stage" id="stage">
       <canvas id="c" aria-label="3D model of the bedroom"></canvas>
       <div class="labels" id="labels"></div>
+      <div class="stage-actions">
+        <button class="btn" id="open-all">Open everything</button>
+        <button class="btn" id="close-all">Close everything</button>
+      </div>
       <div class="hint" id="hint"></div>
       <div class="status" id="status" hidden>The 3D viewer needs WebGL, which this browser has turned off.</div>
     </div>
 
-    <aside>
+    <aside id="info">
       <div>
-        <h2>Cut list (cm, W × D × H)</h2>
-        <table class="cut" aria-label="Component sizes">
-          <tbody id="cutlist"></tbody>
-        </table>
+        <h2 id="info-name"></h2>
+        <p id="info-blurb"></p>
       </div>
       <div>
-        <h2>Assumptions in this sketch</h2>
+        <h3>Opening and using it</h3>
+        <ul class="checks" id="info-checks"></ul>
+      </div>
+      <div>
+        <h3>Storage</h3>
+        <table class="kv"><tbody id="info-storage"></tbody></table>
+      </div>
+      <div>
+        <h3>Assumptions</h3>
         <ul class="notes">
-          <li>Platform top at 72 cm so a 20 cm mattress sits level with the 92 cm sill. The exact height is still to be confirmed.</li>
-          <li>Head shelves use the 16 cm left over by a 190 cm mattress. The socket and USB plate are drawn on the side wall.</li>
-          <li>The cabinet over the feet stops at the window reveal. The air duct in that wall is not shown.</li>
-          <li>Wardrobe doors start 40 cm from the right-hand end, so the desk sits in front of a fixed panel.</li>
-          <li>Door: 76 cm leaf hinged on the right, opening against the wardrobe side.</li>
+          <li>Room door 76 cm, hinged on the right, opening in. No radiator under the window.</li>
+          <li>Standard single mattress, 190 × 90 cm.</li>
+          <li>Built-in units are scribed to the walls, so skirting is removed behind them.</li>
         </ul>
       </div>
     </aside>
@@ -147,29 +180,70 @@ ul.notes { margin: 0; padding-left: 18px; color: var(--muted); font-size: 13px; 
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
 <script>
-const MODEL = {"room":[206.0,202.0,250.0],"boxes":[{"id":"floor","role":"floor","min":[-12.0,-12.0,-2.0],"max":[218.0,232.0,0.0],"group":"room"},{"id":"ceiling","role":"ceiling","min":[-12.0,-12.0,250.0],"max":[218.0,232.0,260.0]},{"id":"wall_left","role":"wall","min":[-12.0,-12.0,0.0],"max":[0.0,232.0,250.0]},{"id":"wall_right","role":"wall","min":[206.0,-12.0,0.0],"max":[218.0,232.0,250.0]},{"id":"wall_door_a","role":"wall","min":[0.0,-12.0,0.0],"max":[8.0,0.0,250.0],"group":"wall_door"},{"id":"wall_door_b","role":"wall","min":[84.0,-12.0,0.0],"max":[206.0,0.0,250.0],"group":"wall_door"},{"id":"wall_door_c","role":"wall","min":[8.0,-12.0,198.0],"max":[84.0,0.0,250.0],"group":"wall_door"},{"id":"wall_win_a","role":"wall","min":[0.0,202.0,0.0],"max":[62.0,232.0,250.0],"group":"wall_window"},{"id":"wall_win_b","role":"wall","min":[152.0,202.0,0.0],"max":[206.0,232.0,250.0],"group":"wall_window"},{"id":"wall_win_c","role":"wall","min":[62.0,202.0,0.0],"max":[152.0,232.0,90.0],"group":"wall_window"},{"id":"wall_win_d","role":"wall","min":[62.0,202.0,225.0],"max":[152.0,232.0,250.0],"group":"wall_window"},{"id":"sill","role":"trim","min":[62.0,202.0,90.0],"max":[152.0,222.0,92.0],"group":"window"},{"id":"frame_l","role":"trim","min":[62.0,222.0,92.0],"max":[68.0,229.0,225.0],"group":"window"},{"id":"frame_r","role":"trim","min":[146.0,222.0,92.0],"max":[152.0,229.0,225.0],"group":"window"},{"id":"frame_b","role":"trim","min":[62.0,222.0,92.0],"max":[152.0,229.0,98.0],"group":"window"},{"id":"frame_t","role":"trim","min":[62.0,222.0,219.0],"max":[152.0,229.0,225.0],"group":"window"},{"id":"frame_m","role":"trim","min":[62.0,222.0,186.0],"max":[152.0,229.0,192.0],"group":"window"},{"id":"glass","role":"glass","min":[68.0,225.0,98.0],"max":[146.0,225.6,219.0],"group":"window"},{"id":"skirting_0","role":"trim","min":[0.0,0.0,0.0],"max":[1.5,202.0,10.0],"group":"trim"},{"id":"skirting_1","role":"trim","min":[204.5,0.0,0.0],"max":[206.0,202.0,10.0],"group":"trim"},{"id":"skirting_2","role":"trim","min":[0.0,200.5,0.0],"max":[206.0,202.0,10.0],"group":"trim"},{"id":"skirting_3","role":"trim","min":[0.0,0.0,0.0],"max":[8.0,1.5,10.0],"group":"trim"},{"id":"lining_l","role":"trim","min":[6.0,-12.0,0.0],"max":[8.0,0.0,198.0],"group":"door"},{"id":"lining_r","role":"trim","min":[84.0,-12.0,0.0],"max":[86.0,0.0,198.0],"group":"door"},{"id":"lining_t","role":"trim","min":[6.0,-12.0,198.0],"max":[86.0,0.0,200.0],"group":"door"},{"id":"arch_l","role":"trim","min":[2.0,0.0,0.0],"max":[6.0,1.5,204.0],"group":"door"},{"id":"arch_t","role":"trim","min":[2.0,0.0,200.0],"max":[86.0,1.5,205.0],"group":"door"},{"id":"door_leaf","role":"trim","min":[80.5,0.5,0.5],"max":[84.0,76.5,197.5],"group":"door"},{"id":"door_handle","role":"metal","min":[74.5,66.0,98.0],"max":[80.5,72.0,100.0],"group":"door"},{"id":"bed_plinth","role":"carcass","min":[0.0,116.0,0.0],"max":[206.0,202.0,8.0],"group":"bed"},{"id":"bed_body","role":"carcass","min":[0.0,113.8,8.0],"max":[206.0,202.0,70.2],"group":"bed"},{"id":"bed_top","role":"front","min":[0.0,112.0,70.2],"max":[206.0,202.0,72.0],"group":"bed"},{"id":"drawer_1","role":"front","min":[0.3,112.0,8.3],"max":[51.42,113.8,69.9],"group":"drawers"},{"id":"drawer_1_pull","role":"metal","min":[17.86,109.6,62.0],"max":[33.86,112.0,63.2],"group":"drawers"},{"id":"drawer_2","role":"front","min":[51.72,112.0,8.3],"max":[102.85,113.8,69.9],"group":"drawers"},{"id":"drawer_2_pull","role":"metal","min":[69.29,109.6,62.0],"max":[85.29,112.0,63.2],"group":"drawers"},{"id":"drawer_3","role":"front","min":[103.15,112.0,8.3],"max":[154.27,113.8,69.9],"group":"drawers"},{"id":"drawer_3_pull","role":"metal","min":[120.71,109.6,62.0],"max":[136.71,112.0,63.2],"group":"drawers"},{"id":"drawer_4","role":"front","min":[154.57,112.0,8.3],"max":[205.7,113.8,69.9],"group":"drawers"},{"id":"drawer_4_pull","role":"metal","min":[172.14,109.6,62.0],"max":[188.14,112.0,63.2],"group":"drawers"},{"id":"mattress_L","role":"mattress","min":[16.5,113.0,72.0],"max":[205.5,201.0,92.0],"when":"L","group":"mattress","soft":true},{"id":"duvet_L","role":"duvet","min":[58.0,110.5,87.0],"max":[206.5,201.5,97.0],"when":"L","group":"bedding","soft":true},{"id":"pillow_L","role":"pillow","min":[20.0,120.0,91.0],"max":[56.0,194.0,103.0],"when":"L","group":"bedding","soft":true},{"id":"head_front_L","role":"front","min":[0.0,112.0,72.0],"max":[16.0,113.8,200.0],"when":"L","group":"head_shelves"},{"id":"head_shelf_L_0","role":"carcass","min":[0.0,113.8,72.0],"max":[16.0,202.0,73.8],"when":"L","group":"head_shelves"},{"id":"head_shelf_L_1","role":"front","min":[0.0,113.8,104.0],"max":[16.0,202.0,105.8],"when":"L","group":"head_shelves"},{"id":"head_shelf_L_2","role":"front","min":[0.0,113.8,136.0],"max":[16.0,202.0,137.8],"when":"L","group":"head_shelves"},{"id":"head_shelf_L_3","role":"front","min":[0.0,113.8,168.0],"max":[16.0,202.0,169.8],"when":"L","group":"head_shelves"},{"id":"head_shelf_L_4","role":"front","min":[0.0,113.8,198.2],"max":[16.0,202.0,200.0],"when":"L","group":"head_shelves"},{"id":"socket_L","role":"socket","min":[0.0,150.0,78.0],"max":[0.9,164.0,86.5],"when":"L","group":"head_shelves"},{"id":"lamp_base_L","role":"lampbase","min":[3.0,128.0,73.8],"max":[13.0,138.0,76.8],"when":"L","group":"props"},{"id":"lamp_shade_L","role":"lampshade","min":[2.5,127.5,82.8],"max":[13.5,138.5,92.8],"when":"L","group":"props"},{"id":"lamp_stem_L","role":"metal","min":[7.5,132.5,76.8],"max":[8.5,133.5,82.8],"when":"L","group":"props"},{"id":"book_L_0","role":"book1","min":[2.0,132.0,105.8],"max":[14.0,135.0,127.8],"when":"L","group":"props"},{"id":"book_L_1","role":"book2","min":[2.0,135.3,105.8],"max":[14.0,137.8,129.8],"when":"L","group":"props"},{"id":"book_L_2","role":"book3","min":[2.0,138.1,105.8],"max":[14.0,142.1,125.8],"when":"L","group":"props"},{"id":"book_L_3","role":"book1","min":[2.0,142.4,105.8],"max":[14.0,144.4,128.8],"when":"L","group":"props"},{"id":"book_L_4","role":"book2","min":[2.0,144.7,105.8],"max":[14.0,148.2,126.8],"when":"L","group":"props"},{"id":"cab_body_L","role":"carcass","min":[153.0,113.8,190.0],"max":[206.0,202.0,250.0],"when":"L","group":"overhead_cabinet"},{"id":"cab_door_L_0","role":"front","min":[153.15,112.0,190.0],"max":[179.35,113.8,249.7],"when":"L","group":"overhead_cabinet"},{"id":"cab_door_L_1","role":"front","min":[179.65,112.0,190.0],"max":[205.85,113.8,249.7],"when":"L","group":"overhead_cabinet"},{"id":"cab_pull_L_0","role":"metal","min":[176.0,109.6,193.0],"max":[177.2,112.0,205.0],"when":"L","group":"overhead_cabinet"},{"id":"cab_pull_L_1","role":"metal","min":[181.8,109.6,193.0],"max":[183.0,112.0,205.0],"when":"L","group":"overhead_cabinet"},{"id":"mattress_R","role":"mattress","min":[0.5,113.0,72.0],"max":[189.5,201.0,92.0],"when":"R","group":"mattress","soft":true},{"id":"duvet_R","role":"duvet","min":[-0.5,110.5,87.0],"max":[148.0,201.5,97.0],"when":"R","group":"bedding","soft":true},{"id":"pillow_R","role":"pillow","min":[150.0,120.0,91.0],"max":[186.0,194.0,103.0],"when":"R","group":"bedding","soft":true},{"id":"head_front_R","role":"front","min":[190.0,112.0,72.0],"max":[206.0,113.8,200.0],"when":"R","group":"head_shelves"},{"id":"head_shelf_R_0","role":"carcass","min":[190.0,113.8,72.0],"max":[206.0,202.0,73.8],"when":"R","group":"head_shelves"},{"id":"head_shelf_R_1","role":"front","min":[190.0,113.8,104.0],"max":[206.0,202.0,105.8],"when":"R","group":"head_shelves"},{"id":"head_shelf_R_2","role":"front","min":[190.0,113.8,136.0],"max":[206.0,202.0,137.8],"when":"R","group":"head_shelves"},{"id":"head_shelf_R_3","role":"front","min":[190.0,113.8,168.0],"max":[206.0,202.0,169.8],"when":"R","group":"head_shelves"},{"id":"head_shelf_R_4","role":"front","min":[190.0,113.8,198.2],"max":[206.0,202.0,200.0],"when":"R","group":"head_shelves"},{"id":"socket_R","role":"socket","min":[205.1,150.0,78.0],"max":[206.0,164.0,86.5],"when":"R","group":"head_shelves"},{"id":"lamp_base_R","role":"lampbase","min":[193.0,128.0,73.8],"max":[203.0,138.0,76.8],"when":"R","group":"props"},{"id":"lamp_shade_R","role":"lampshade","min":[192.5,127.5,82.8],"max":[203.5,138.5,92.8],"when":"R","group":"props"},{"id":"lamp_stem_R","role":"metal","min":[197.5,132.5,76.8],"max":[198.5,133.5,82.8],"when":"R","group":"props"},{"id":"book_R_0","role":"book1","min":[192.0,132.0,105.8],"max":[204.0,135.0,127.8],"when":"R","group":"props"},{"id":"book_R_1","role":"book2","min":[192.0,135.3,105.8],"max":[204.0,137.8,129.8],"when":"R","group":"props"},{"id":"book_R_2","role":"book3","min":[192.0,138.1,105.8],"max":[204.0,142.1,125.8],"when":"R","group":"props"},{"id":"book_R_3","role":"book1","min":[192.0,142.4,105.8],"max":[204.0,144.4,128.8],"when":"R","group":"props"},{"id":"book_R_4","role":"book2","min":[192.0,144.7,105.8],"max":[204.0,148.2,126.8],"when":"R","group":"props"},{"id":"cab_body_R","role":"carcass","min":[0.0,113.8,190.0],"max":[61.0,202.0,250.0],"when":"R","group":"overhead_cabinet"},{"id":"cab_door_R_0","role":"front","min":[0.15,112.0,190.0],"max":[30.35,113.8,249.7],"when":"R","group":"overhead_cabinet"},{"id":"cab_door_R_1","role":"front","min":[30.65,112.0,190.0],"max":[60.85,113.8,249.7],"when":"R","group":"overhead_cabinet"},{"id":"cab_pull_R_0","role":"metal","min":[27.0,109.6,193.0],"max":[28.2,112.0,205.0],"when":"R","group":"overhead_cabinet"},{"id":"cab_pull_R_1","role":"metal","min":[32.8,109.6,193.0],"max":[34.0,112.0,205.0],"when":"R","group":"overhead_cabinet"},{"id":"ward_body","role":"carcass","min":[86.0,0.0,8.0],"max":[206.0,53.2,250.0],"group":"wardrobe"},{"id":"ward_plinth","role":"carcass","min":[86.0,0.0,0.0],"max":[206.0,52.0,8.0],"group":"wardrobe"},{"id":"ward_door_shelves","role":"front","min":[86.15,53.2,8.3],"max":[125.85,55.0,207.7],"group":"wardrobe"},{"id":"ward_door_hanging","role":"front","min":[126.15,53.2,8.3],"max":[165.85,55.0,207.7],"group":"wardrobe"},{"id":"ward_fixed_panel","role":"front","min":[166.15,53.2,8.3],"max":[205.85,55.0,207.7],"group":"wardrobe"},{"id":"ward_top_1","role":"front","min":[86.15,53.2,208.0],"max":[125.85,55.0,249.7],"group":"wardrobe"},{"id":"ward_top_2","role":"front","min":[126.15,53.2,208.0],"max":[165.85,55.0,249.7],"group":"wardrobe"},{"id":"ward_top_3","role":"front","min":[166.15,53.2,208.0],"max":[205.85,55.0,249.7],"group":"wardrobe"},{"id":"ward_pull_1","role":"metal","min":[122.0,55.0,95.0],"max":[123.2,57.4,125.0],"group":"wardrobe"},{"id":"ward_pull_2","role":"metal","min":[128.8,55.0,95.0],"max":[130.0,57.4,125.0],"group":"wardrobe"},{"id":"ward_top_pull_1","role":"metal","min":[122.0,55.0,210.0],"max":[123.2,57.4,220.0],"group":"wardrobe"},{"id":"ward_top_pull_2","role":"metal","min":[128.8,55.0,210.0],"max":[130.0,57.4,220.0],"group":"wardrobe"},{"id":"desk_top","role":"desktop","min":[166.0,55.0,72.5],"max":[206.0,112.0,75.5],"group":"desk"},{"id":"mirror","role":"mirror","min":[205.4,62.0,95.0],"max":[206.0,105.0,180.0],"group":"desk"},{"id":"mirror_frame","role":"front","min":[205.5,61.0,94.0],"max":[206.0,106.0,181.0],"group":"desk"},{"id":"sill_cushion","role":"cushion","min":[66.0,203.0,92.0],"max":[148.0,219.0,101.0],"group":"props","soft":true}]};
+const DATA = {"room":{"parts":[{"id":"floor","role":"floor","min":[-12,-12,-2],"max":[218.0,232.0,0],"unit":"room"},{"id":"ceiling","role":"ceiling","min":[-12,-12,250.0],"max":[218.0,232.0,260.0],"unit":"ceiling"},{"id":"wall_left","role":"wall","min":[-12,-12,0],"max":[0,232.0,250.0],"unit":"wall_left"},{"id":"wall_right","role":"wall","min":[206.0,-12,0],"max":[218.0,232.0,250.0],"unit":"wall_right"},{"id":"wall_door_a","role":"wall","min":[0,-12,0],"max":[8.0,0,250.0],"unit":"wall_door"},{"id":"wall_door_b","role":"wall","min":[84.0,-12,0],"max":[206.0,0,250.0],"unit":"wall_door"},{"id":"wall_door_c","role":"wall","min":[8.0,-12,198.0],"max":[84.0,0,250.0],"unit":"wall_door"},{"id":"wall_win_a","role":"wall","min":[0,202.0,0],"max":[62.0,232.0,250.0],"unit":"wall_window"},{"id":"wall_win_b","role":"wall","min":[152.0,202.0,0],"max":[206.0,232.0,250.0],"unit":"wall_window"},{"id":"wall_win_c","role":"wall","min":[62.0,202.0,0],"max":[152.0,232.0,90.0],"unit":"wall_window"},{"id":"wall_win_d","role":"wall","min":[62.0,202.0,225.0],"max":[152.0,232.0,250.0],"unit":"wall_window"},{"id":"sill","role":"trim","min":[62.0,202.0,90.0],"max":[152.0,222.0,92.0],"unit":"window"},{"id":"frame_l","role":"trim","min":[62.0,222.0,98.0],"max":[68.0,229.0,219.0],"unit":"window"},{"id":"frame_r","role":"trim","min":[146.0,222.0,98.0],"max":[152.0,229.0,219.0],"unit":"window"},{"id":"frame_b","role":"trim","min":[62.0,222.0,92.0],"max":[152.0,229.0,98.0],"unit":"window"},{"id":"frame_t","role":"trim","min":[62.0,222.0,219.0],"max":[152.0,229.0,225.0],"unit":"window"},{"id":"frame_m","role":"trim","min":[68.0,222.0,186],"max":[146.0,229.0,192],"unit":"window"},{"id":"glass","role":"glass","min":[68.0,225.0,98.0],"max":[146.0,225.6,219.0],"unit":"window"},{"id":"skirting_0","role":"trim","min":[0,0,0],"max":[1.2,202.0,9],"unit":"trim"},{"id":"skirting_1","role":"trim","min":[204.8,0,0],"max":[206.0,202.0,9],"unit":"trim"},{"id":"skirting_2","role":"trim","min":[0,200.8,0],"max":[206.0,202.0,9],"unit":"trim"},{"id":"skirting_3","role":"trim","min":[0,0,0],"max":[8.0,1.2,9],"unit":"trim"},{"id":"skirting_4","role":"trim","min":[84.0,0,0],"max":[206.0,1.2,9],"unit":"trim"},{"id":"lining_l","role":"trim","min":[6.0,-12,0],"max":[8.0,0,198.0],"unit":"door_frame"},{"id":"lining_r","role":"trim","min":[84.0,-12,0],"max":[86.0,0,198.0],"unit":"door_frame"},{"id":"lining_t","role":"trim","min":[6.0,-12,198.0],"max":[86.0,0,200.0],"unit":"door_frame"},{"id":"arch_t","role":"trim","min":[6.0,0,200.0],"max":[86.0,1.2,205.0],"unit":"door_frame"},{"id":"room_door","role":"trim","min":[8.0,-3.5,0.5],"max":[84.0,0,197.5],"unit":"room_door","mover":"room_door"},{"id":"room_door_h","role":"metal","min":[11.0,0,98],"max":[20.0,6,100.5],"unit":"room_door","mover":"room_door"}],"movers":{"room_door":{"type":"hinge","kind":"room door","pivot":[84.0,0.0],"angle":-90,"z":[0.5,197.5],"unit":"room_door"}}},"layouts":{"AL":{"name":"Current plan","blurb":"Bed across the window at sill height with four big drawers; tall wardrobe beside the door; small desk between them.","parts":[{"id":"bed_pl","role":"carcass","min":[1.8,116.2,0],"max":[204.2,118.0,8],"unit":"bed"},{"id":"bed_bot","role":"carcass","min":[1.8,113.8,8],"max":[204.2,200.2,9.8],"unit":"bed"},{"id":"bed_sa","role":"carcass","min":[0,113.8,0],"max":[1.8,202.0,70.2],"unit":"bed"},{"id":"bed_sb","role":"carcass","min":[204.2,113.8,0],"max":[206.0,202.0,70.2],"unit":"bed"},{"id":"bed_back","role":"carcass","min":[1.8,200.2,9.8],"max":[204.2,202.0,70.2],"unit":"bed"},{"id":"bed_top","role":"front","min":[0,112.0,70.2],"max":[206.0,202.0,72],"unit":"bed"},{"id":"bed_div1","role":"carcass","min":[50.6,113.8,9.8],"max":[52.4,200.2,70.2],"unit":"bed"},{"id":"bed_div2","role":"carcass","min":[102.1,113.8,9.8],"max":[103.9,200.2,70.2],"unit":"bed"},{"id":"bed_div3","role":"carcass","min":[153.6,113.8,9.8],"max":[155.4,200.2,70.2],"unit":"bed"},{"id":"drawer1","role":"front","min":[0.1,112.0,8.3],"max":[51.4,113.8,69.9],"unit":"bed","mover":"drawer1"},{"id":"drawer1_s1","role":"carcass","min":[2.5,113.8,11.3],"max":[4.0,192.0,63.9],"unit":"bed","mover":"drawer1"},{"id":"drawer1_s2","role":"carcass","min":[47.5,113.8,11.3],"max":[49.0,192.0,63.9],"unit":"bed","mover":"drawer1"},{"id":"drawer1_bk","role":"carcass","min":[4.0,190.5,11.3],"max":[47.5,192.0,63.9],"unit":"bed","mover":"drawer1"},{"id":"drawer1_bt","role":"carcass","min":[4.0,113.8,11.3],"max":[47.5,190.5,12.5],"unit":"bed","mover":"drawer1"},{"id":"drawer1_h","role":"metal","min":[17.8,109.6,61.9],"max":[33.8,112.0,63.1],"unit":"bed","mover":"drawer1"},{"id":"drawer2","role":"front","min":[51.6,112.0,8.3],"max":[102.8,113.8,69.9],"unit":"bed","mover":"drawer2"},{"id":"drawer2_s1","role":"carcass","min":[54.0,113.8,11.3],"max":[55.5,192.0,63.9],"unit":"bed","mover":"drawer2"},{"id":"drawer2_s2","role":"carcass","min":[99.0,113.8,11.3],"max":[100.5,192.0,63.9],"unit":"bed","mover":"drawer2"},{"id":"drawer2_bk","role":"carcass","min":[55.5,190.5,11.3],"max":[99.0,192.0,63.9],"unit":"bed","mover":"drawer2"},{"id":"drawer2_bt","role":"carcass","min":[55.5,113.8,11.3],"max":[99.0,190.5,12.5],"unit":"bed","mover":"drawer2"},{"id":"drawer2_h","role":"metal","min":[69.2,109.6,61.9],"max":[85.2,112.0,63.1],"unit":"bed","mover":"drawer2"},{"id":"drawer3","role":"front","min":[103.2,112.0,8.3],"max":[154.3,113.8,69.9],"unit":"bed","mover":"drawer3"},{"id":"drawer3_s1","role":"carcass","min":[105.5,113.8,11.3],"max":[107.0,192.0,63.9],"unit":"bed","mover":"drawer3"},{"id":"drawer3_s2","role":"carcass","min":[150.5,113.8,11.3],"max":[152.0,192.0,63.9],"unit":"bed","mover":"drawer3"},{"id":"drawer3_bk","role":"carcass","min":[107.0,190.5,11.3],"max":[150.5,192.0,63.9],"unit":"bed","mover":"drawer3"},{"id":"drawer3_bt","role":"carcass","min":[107.0,113.8,11.3],"max":[150.5,190.5,12.5],"unit":"bed","mover":"drawer3"},{"id":"drawer3_h","role":"metal","min":[120.8,109.6,61.9],"max":[136.8,112.0,63.1],"unit":"bed","mover":"drawer3"},{"id":"drawer4","role":"front","min":[154.7,112.0,8.3],"max":[205.8,113.8,69.9],"unit":"bed","mover":"drawer4"},{"id":"drawer4_s1","role":"carcass","min":[157.0,113.8,11.3],"max":[158.5,192.0,63.9],"unit":"bed","mover":"drawer4"},{"id":"drawer4_s2","role":"carcass","min":[202.0,113.8,11.3],"max":[203.5,192.0,63.9],"unit":"bed","mover":"drawer4"},{"id":"drawer4_bk","role":"carcass","min":[158.5,190.5,11.3],"max":[202.0,192.0,63.9],"unit":"bed","mover":"drawer4"},{"id":"drawer4_bt","role":"carcass","min":[158.5,113.8,11.3],"max":[202.0,190.5,12.5],"unit":"bed","mover":"drawer4"},{"id":"drawer4_h","role":"metal","min":[172.2,109.6,61.9],"max":[188.2,112.0,63.1],"unit":"bed","mover":"drawer4"},{"id":"mattress","role":"mattress","min":[16.5,113.0,72],"max":[205.5,201.0,92],"unit":"bedding","soft":1},{"id":"pillow","role":"pillow","min":[20.5,121.0,91],"max":[56.5,193.0,103],"unit":"bedding","soft":1},{"id":"duvet","role":"duvet","min":[58.5,111.5,87],"max":[206.0,201.5,97],"unit":"bedding","soft":1},{"id":"head_front","role":"front","min":[0,112.0,72],"max":[16.0,113.8,200],"unit":"head_shelves"},{"id":"head_shelf0","role":"front","min":[0,113.8,72],"max":[16.0,202.0,73.8],"unit":"head_shelves"},{"id":"head_shelf1","role":"front","min":[0,113.8,104],"max":[16.0,202.0,105.8],"unit":"head_shelves"},{"id":"head_shelf2","role":"front","min":[0,113.8,136],"max":[16.0,202.0,137.8],"unit":"head_shelves"},{"id":"head_shelf3","role":"front","min":[0,113.8,168],"max":[16.0,202.0,169.8],"unit":"head_shelves"},{"id":"head_shelf4","role":"front","min":[0,113.8,198.2],"max":[16.0,202.0,200.0],"unit":"head_shelves"},{"id":"socket","role":"socket","min":[0.0,150,78],"max":[0.9,164,86.5],"unit":"head_shelves"},{"id":"bedlamp_base","role":"lampbase","min":[2.5,126.5,73.8],"max":[13.5,137.5,75.8],"unit":"lamps","shape":"cylz"},{"id":"bedlamp_stem","role":"metal","min":[7.4,131.4,75.8],"max":[8.6,132.6,84.8],"unit":"lamps","shape":"cylz"},{"id":"bedlamp_shade","role":"lampshade","min":[2.0,126,82.8],"max":[14.0,138,95.8],"unit":"lamps","shape":"cylz","light":1},{"id":"book0","role":"book1","min":[2,132.0,105.8],"max":[14.0,135.0,127.8],"unit":"props"},{"id":"book1","role":"book2","min":[2,135.6,105.8],"max":[14.0,138.1,129.8],"unit":"props"},{"id":"book2","role":"book3","min":[2,139.2,105.8],"max":[14.0,143.2,125.8],"unit":"props"},{"id":"book3","role":"book1","min":[2,142.8,105.8],"max":[14.0,144.8,128.8],"unit":"props"},{"id":"ofc_sa","role":"carcass","min":[153.0,113.8,190],"max":[154.8,202.0,250.0],"unit":"overhead_cabinet"},{"id":"ofc_sb","role":"carcass","min":[204.2,113.8,190],"max":[206.0,202.0,250.0],"unit":"overhead_cabinet"},{"id":"ofc_top","role":"carcass","min":[154.8,113.8,248.2],"max":[204.2,202.0,250.0],"unit":"overhead_cabinet"},{"id":"ofc_bot","role":"carcass","min":[154.8,113.8,190.0],"max":[204.2,202.0,191.8],"unit":"overhead_cabinet"},{"id":"ofc_back","role":"carcass","min":[154.8,200.2,191.8],"max":[204.2,202.0,248.2],"unit":"overhead_cabinet"},{"id":"ofc_shelf","role":"carcass","min":[154.8,113.8,220],"max":[204.2,200.2,221.8],"unit":"overhead_cabinet"},{"id":"ofc_d1","role":"front","min":[153.2,112.0,190.3],"max":[179.3,113.8,249.7],"unit":"overhead_cabinet","mover":"ofc_d1"},{"id":"ofc_d1_h","role":"metal","min":[175.3,109.6,193.3],"max":[176.5,112.0,205.3],"unit":"overhead_cabinet","mover":"ofc_d1"},{"id":"ofc_d2","role":"front","min":[179.7,112.0,190.3],"max":[205.8,113.8,249.7],"unit":"overhead_cabinet","mover":"ofc_d2"},{"id":"ofc_d2_h","role":"metal","min":[182.5,109.6,193.3],"max":[183.7,112.0,205.3],"unit":"overhead_cabinet","mover":"ofc_d2"},{"id":"ward_sa","role":"carcass","min":[86.0,0.0,0],"max":[87.8,53.2,250.0],"unit":"wardrobe"},{"id":"ward_sb","role":"carcass","min":[204.2,0.0,0],"max":[206.0,53.2,250.0],"unit":"wardrobe"},{"id":"ward_top","role":"carcass","min":[87.8,0.0,248.2],"max":[204.2,53.2,250.0],"unit":"wardrobe"},{"id":"ward_bot","role":"carcass","min":[87.8,0.0,8],"max":[204.2,53.2,9.8],"unit":"wardrobe"},{"id":"ward_back","role":"carcass","min":[87.8,0.0,9.8],"max":[204.2,1.8,248.2],"unit":"wardrobe"},{"id":"ward_pl","role":"carcass","min":[87.8,48.7,0],"max":[204.2,50.5,8],"unit":"wardrobe"},{"id":"ward_div","role":"carcass","min":[125.1,1.8,9.8],"max":[126.9,53.2,208],"unit":"wardrobe"},{"id":"ward_mid","role":"carcass","min":[87.8,1.8,208],"max":[204.2,53.2,209.8],"unit":"wardrobe"},{"id":"ward_tdiv1","role":"carcass","min":[125.1,1.8,209.8],"max":[126.9,53.2,248.2],"unit":"wardrobe"},{"id":"ward_tdiv2","role":"carcass","min":[165.1,1.8,209.8],"max":[166.9,53.2,248.2],"unit":"wardrobe"},{"id":"ward_sh0","role":"carcass","min":[87.8,1.8,45],"max":[125.1,53.2,46.8],"unit":"wardrobe"},{"id":"ward_sh1","role":"carcass","min":[87.8,1.8,85],"max":[125.1,53.2,86.8],"unit":"wardrobe"},{"id":"ward_sh2","role":"carcass","min":[87.8,1.8,125],"max":[125.1,53.2,126.8],"unit":"wardrobe"},{"id":"ward_sh3","role":"carcass","min":[87.8,1.8,165],"max":[125.1,53.2,166.8],"unit":"wardrobe"},{"id":"ward_rail","role":"metal","min":[126.9,26.3,193.8],"max":[204.2,28.7,196.2],"unit":"wardrobe","shape":"cylx"},{"id":"ward_rail_c0","role":"cloth1","min":[129.6,6.5,108.3],"max":[132.2,48.5,192],"unit":"wardrobe","soft":1},{"id":"ward_rail_c1","role":"cloth2","min":[135.9,6.5,82.7],"max":[138.5,48.5,192],"unit":"wardrobe","soft":1},{"id":"ward_rail_c2","role":"cloth3","min":[142.2,6.5,57.0],"max":[144.8,48.5,192],"unit":"wardrobe","soft":1},{"id":"ward_rail_c3","role":"cloth4","min":[148.5,6.5,95.5],"max":[151.1,48.5,192],"unit":"wardrobe","soft":1},{"id":"ward_rail_c4","role":"cloth1","min":[154.8,6.5,69.8],"max":[157.4,48.5,192],"unit":"wardrobe","soft":1},{"id":"ward_rail_c5","role":"cloth2","min":[161.1,6.5,108.3],"max":[163.7,48.5,192],"unit":"wardrobe","soft":1},{"id":"ward_rail_c6","role":"cloth3","min":[167.4,6.5,82.7],"max":[170.0,48.5,192],"unit":"wardrobe","soft":1},{"id":"ward_rail_c7","role":"cloth4","min":[173.7,6.5,57.0],"max":[176.3,48.5,192],"unit":"wardrobe","soft":1},{"id":"ward_rail_c8","role":"cloth1","min":[180.0,6.5,95.5],"max":[182.6,48.5,192],"unit":"wardrobe","soft":1},{"id":"ward_rail_c9","role":"cloth2","min":[186.3,6.5,69.8],"max":[188.9,48.5,192],"unit":"wardrobe","soft":1},{"id":"ward_rail_c10","role":"cloth3","min":[192.6,6.5,108.3],"max":[195.2,48.5,192],"unit":"wardrobe","soft":1},{"id":"ward_rail_c11","role":"cloth4","min":[198.9,6.5,82.7],"max":[201.5,48.5,192],"unit":"wardrobe","soft":1},{"id":"ward_fixed","role":"front","min":[166.2,53.2,8.3],"max":[205.8,55.0,207.7],"unit":"wardrobe"},{"id":"ward_d1","role":"front","min":[86.2,53.2,8.3],"max":[125.8,55.0,207.7],"unit":"wardrobe","mover":"ward_d1"},{"id":"ward_d1_h","role":"metal","min":[121.8,55.0,98],"max":[123.0,57.4,122],"unit":"wardrobe","mover":"ward_d1"},{"id":"ward_d2","role":"front","min":[126.2,53.2,8.3],"max":[165.8,55.0,207.7],"unit":"wardrobe","mover":"ward_d2"},{"id":"ward_d2_h","role":"metal","min":[129.0,55.0,98],"max":[130.2,57.4,122],"unit":"wardrobe","mover":"ward_d2"},{"id":"ward_t1","role":"front","min":[86.2,53.2,208],"max":[125.8,55.0,249.7],"unit":"wardrobe","mover":"ward_t1"},{"id":"ward_t1_h","role":"metal","min":[121.8,55.0,211],"max":[123.0,57.4,223],"unit":"wardrobe","mover":"ward_t1"},{"id":"ward_t2","role":"front","min":[126.2,53.2,208],"max":[165.8,55.0,249.7],"unit":"wardrobe","mover":"ward_t2"},{"id":"ward_t2_h","role":"metal","min":[129.0,55.0,211],"max":[130.2,57.4,223],"unit":"wardrobe","mover":"ward_t2"},{"id":"ward_t3","role":"front","min":[166.2,53.2,208],"max":[205.8,55.0,249.7],"unit":"wardrobe","mover":"ward_t3"},{"id":"ward_t3_h","role":"metal","min":[169.0,55.0,211],"max":[170.2,57.4,223],"unit":"wardrobe","mover":"ward_t3"},{"id":"desk_top","role":"desktop","min":[166.0,55,72.5],"max":[206.0,112.0,75.5],"unit":"desk"},{"id":"mirror","role":"mirror","min":[205.4,62,95],"max":[206.0,105.0,180],"unit":"desk"},{"id":"desklamp_base","role":"lampbase","min":[190.5,97.5,75.5],"max":[201.5,108.5,77.5],"unit":"lamps","shape":"cylz"},{"id":"desklamp_stem","role":"metal","min":[195.4,102.4,77.5],"max":[196.6,103.6,107.5],"unit":"lamps","shape":"cylz"},{"id":"desklamp_shade","role":"lampshade","min":[189.0,96.0,105.5],"max":[203.0,110.0,118.5],"unit":"lamps","shape":"cylz","light":1},{"id":"chair_seat","role":"chair","min":[150,66,44],"max":[188,104,47.5],"unit":"chair","soft":1},{"id":"chair_leg0","role":"metal","min":[152,68,0],"max":[155,71,44],"unit":"chair","shape":"cylz"},{"id":"chair_leg1","role":"metal","min":[183,68,0],"max":[186,71,44],"unit":"chair","shape":"cylz"},{"id":"chair_leg2","role":"metal","min":[152,99,0],"max":[155,102,44],"unit":"chair","shape":"cylz"},{"id":"chair_leg3","role":"metal","min":[183,99,0],"max":[186,102,44],"unit":"chair","shape":"cylz"},{"id":"chair_back","role":"chair","min":[150,70,62],"max":[152.5,100,80],"unit":"chair","soft":1},{"id":"sill_cushion","role":"cushion","min":[66.0,203.0,92.0],"max":[148.0,219.0,101.0],"unit":"props","soft":1}],"movers":{"drawer1":{"type":"slide","kind":"drawer","vec":[0,-50,0],"unit":"bed"},"drawer2":{"type":"slide","kind":"drawer","vec":[0,-50,0],"unit":"bed"},"drawer3":{"type":"slide","kind":"drawer","vec":[0,-50,0],"unit":"bed"},"drawer4":{"type":"slide","kind":"drawer","vec":[0,-50,0],"unit":"bed"},"ofc_d1":{"type":"hinge","kind":"door","pivot":[153.0,112.0],"angle":-90,"z":[190.3,249.7],"unit":"overhead_cabinet"},"ofc_d2":{"type":"hinge","kind":"door","pivot":[206.0,112.0],"angle":90,"z":[190.3,249.7],"unit":"overhead_cabinet"},"ward_d1":{"type":"hinge","kind":"door","pivot":[86.0,55.0],"angle":90,"z":[8.3,207.7],"unit":"wardrobe"},"ward_d2":{"type":"hinge","kind":"door","pivot":[166.0,55.0],"angle":-90,"z":[8.3,207.7],"unit":"wardrobe"},"ward_t1":{"type":"hinge","kind":"door","pivot":[86.0,55.0],"angle":90,"z":[208,249.7],"unit":"wardrobe"},"ward_t2":{"type":"hinge","kind":"door","pivot":[166.0,55.0],"angle":-90,"z":[208,249.7],"unit":"wardrobe"},"ward_t3":{"type":"hinge","kind":"door","pivot":[206.0,55.0],"angle":-90,"z":[208,249.7],"unit":"wardrobe"}},"check":{"hard":[],"pairs":[["room_door","drawer1"],["room_door","drawer2"],["drawer2","ward_d1"],["drawer3","ward_d1"],["drawer3","ward_d2"],["drawer4","ward_d2"],["ofc_d1","ward_d2"],["ofc_d1","ward_t2"],["ofc_d1","ward_t3"],["ofc_d2","ward_t3"]],"chair":["drawer3","drawer4","ward_d2"],"fixed_overlaps":[],"seat":92,"headroom":98,"knee_block":[],"floor_m2":1.69,"stats":{"long_hang":77.3,"short_hang":0.0,"drawers":4,"drawer_litres":765.1,"shelf_m2":1.8,"cupboard_litres":500.3}}},"AR":{"name":"Current plan","blurb":"Bed across the window at sill height with four big drawers; tall wardrobe beside the door; small desk between them.","parts":[{"id":"bed_pl","role":"carcass","min":[1.8,116.2,0],"max":[204.2,118.0,8],"unit":"bed"},{"id":"bed_bot","role":"carcass","min":[1.8,113.8,8],"max":[204.2,200.2,9.8],"unit":"bed"},{"id":"bed_sa","role":"carcass","min":[0,113.8,0],"max":[1.8,202.0,70.2],"unit":"bed"},{"id":"bed_sb","role":"carcass","min":[204.2,113.8,0],"max":[206.0,202.0,70.2],"unit":"bed"},{"id":"bed_back","role":"carcass","min":[1.8,200.2,9.8],"max":[204.2,202.0,70.2],"unit":"bed"},{"id":"bed_top","role":"front","min":[0,112.0,70.2],"max":[206.0,202.0,72],"unit":"bed"},{"id":"bed_div1","role":"carcass","min":[50.6,113.8,9.8],"max":[52.4,200.2,70.2],"unit":"bed"},{"id":"bed_div2","role":"carcass","min":[102.1,113.8,9.8],"max":[103.9,200.2,70.2],"unit":"bed"},{"id":"bed_div3","role":"carcass","min":[153.6,113.8,9.8],"max":[155.4,200.2,70.2],"unit":"bed"},{"id":"drawer1","role":"front","min":[0.1,112.0,8.3],"max":[51.4,113.8,69.9],"unit":"bed","mover":"drawer1"},{"id":"drawer1_s1","role":"carcass","min":[2.5,113.8,11.3],"max":[4.0,192.0,63.9],"unit":"bed","mover":"drawer1"},{"id":"drawer1_s2","role":"carcass","min":[47.5,113.8,11.3],"max":[49.0,192.0,63.9],"unit":"bed","mover":"drawer1"},{"id":"drawer1_bk","role":"carcass","min":[4.0,190.5,11.3],"max":[47.5,192.0,63.9],"unit":"bed","mover":"drawer1"},{"id":"drawer1_bt","role":"carcass","min":[4.0,113.8,11.3],"max":[47.5,190.5,12.5],"unit":"bed","mover":"drawer1"},{"id":"drawer1_h","role":"metal","min":[17.8,109.6,61.9],"max":[33.8,112.0,63.1],"unit":"bed","mover":"drawer1"},{"id":"drawer2","role":"front","min":[51.6,112.0,8.3],"max":[102.8,113.8,69.9],"unit":"bed","mover":"drawer2"},{"id":"drawer2_s1","role":"carcass","min":[54.0,113.8,11.3],"max":[55.5,192.0,63.9],"unit":"bed","mover":"drawer2"},{"id":"drawer2_s2","role":"carcass","min":[99.0,113.8,11.3],"max":[100.5,192.0,63.9],"unit":"bed","mover":"drawer2"},{"id":"drawer2_bk","role":"carcass","min":[55.5,190.5,11.3],"max":[99.0,192.0,63.9],"unit":"bed","mover":"drawer2"},{"id":"drawer2_bt","role":"carcass","min":[55.5,113.8,11.3],"max":[99.0,190.5,12.5],"unit":"bed","mover":"drawer2"},{"id":"drawer2_h","role":"metal","min":[69.2,109.6,61.9],"max":[85.2,112.0,63.1],"unit":"bed","mover":"drawer2"},{"id":"drawer3","role":"front","min":[103.2,112.0,8.3],"max":[154.3,113.8,69.9],"unit":"bed","mover":"drawer3"},{"id":"drawer3_s1","role":"carcass","min":[105.5,113.8,11.3],"max":[107.0,192.0,63.9],"unit":"bed","mover":"drawer3"},{"id":"drawer3_s2","role":"carcass","min":[150.5,113.8,11.3],"max":[152.0,192.0,63.9],"unit":"bed","mover":"drawer3"},{"id":"drawer3_bk","role":"carcass","min":[107.0,190.5,11.3],"max":[150.5,192.0,63.9],"unit":"bed","mover":"drawer3"},{"id":"drawer3_bt","role":"carcass","min":[107.0,113.8,11.3],"max":[150.5,190.5,12.5],"unit":"bed","mover":"drawer3"},{"id":"drawer3_h","role":"metal","min":[120.8,109.6,61.9],"max":[136.8,112.0,63.1],"unit":"bed","mover":"drawer3"},{"id":"drawer4","role":"front","min":[154.7,112.0,8.3],"max":[205.8,113.8,69.9],"unit":"bed","mover":"drawer4"},{"id":"drawer4_s1","role":"carcass","min":[157.0,113.8,11.3],"max":[158.5,192.0,63.9],"unit":"bed","mover":"drawer4"},{"id":"drawer4_s2","role":"carcass","min":[202.0,113.8,11.3],"max":[203.5,192.0,63.9],"unit":"bed","mover":"drawer4"},{"id":"drawer4_bk","role":"carcass","min":[158.5,190.5,11.3],"max":[202.0,192.0,63.9],"unit":"bed","mover":"drawer4"},{"id":"drawer4_bt","role":"carcass","min":[158.5,113.8,11.3],"max":[202.0,190.5,12.5],"unit":"bed","mover":"drawer4"},{"id":"drawer4_h","role":"metal","min":[172.2,109.6,61.9],"max":[188.2,112.0,63.1],"unit":"bed","mover":"drawer4"},{"id":"mattress","role":"mattress","min":[0.5,113.0,72],"max":[189.5,201.0,92],"unit":"bedding","soft":1},{"id":"pillow","role":"pillow","min":[149.5,121.0,91],"max":[185.5,193.0,103],"unit":"bedding","soft":1},{"id":"duvet","role":"duvet","min":[0.0,111.5,87],"max":[147.5,201.5,97],"unit":"bedding","soft":1},{"id":"head_front","role":"front","min":[190.0,112.0,72],"max":[206.0,113.8,200],"unit":"head_shelves"},{"id":"head_shelf0","role":"front","min":[190.0,113.8,72],"max":[206.0,202.0,73.8],"unit":"head_shelves"},{"id":"head_shelf1","role":"front","min":[190.0,113.8,104],"max":[206.0,202.0,105.8],"unit":"head_shelves"},{"id":"head_shelf2","role":"front","min":[190.0,113.8,136],"max":[206.0,202.0,137.8],"unit":"head_shelves"},{"id":"head_shelf3","role":"front","min":[190.0,113.8,168],"max":[206.0,202.0,169.8],"unit":"head_shelves"},{"id":"head_shelf4","role":"front","min":[190.0,113.8,198.2],"max":[206.0,202.0,200.0],"unit":"head_shelves"},{"id":"socket","role":"socket","min":[205.1,150,78],"max":[206.0,164,86.5],"unit":"head_shelves"},{"id":"bedlamp_base","role":"lampbase","min":[192.5,126.5,73.8],"max":[203.5,137.5,75.8],"unit":"lamps","shape":"cylz"},{"id":"bedlamp_stem","role":"metal","min":[197.4,131.4,75.8],"max":[198.6,132.6,84.8],"unit":"lamps","shape":"cylz"},{"id":"bedlamp_shade","role":"lampshade","min":[192.0,126,82.8],"max":[204.0,138,95.8],"unit":"lamps","shape":"cylz","light":1},{"id":"book0","role":"book1","min":[192.0,132.0,105.8],"max":[204.0,135.0,127.8],"unit":"props"},{"id":"book1","role":"book2","min":[192.0,135.6,105.8],"max":[204.0,138.1,129.8],"unit":"props"},{"id":"book2","role":"book3","min":[192.0,139.2,105.8],"max":[204.0,143.2,125.8],"unit":"props"},{"id":"book3","role":"book1","min":[192.0,142.8,105.8],"max":[204.0,144.8,128.8],"unit":"props"},{"id":"ofc_sa","role":"carcass","min":[0,113.8,190],"max":[1.8,202.0,250.0],"unit":"overhead_cabinet"},{"id":"ofc_sb","role":"carcass","min":[59.2,113.8,190],"max":[61.0,202.0,250.0],"unit":"overhead_cabinet"},{"id":"ofc_top","role":"carcass","min":[1.8,113.8,248.2],"max":[59.2,202.0,250.0],"unit":"overhead_cabinet"},{"id":"ofc_bot","role":"carcass","min":[1.8,113.8,190.0],"max":[59.2,202.0,191.8],"unit":"overhead_cabinet"},{"id":"ofc_back","role":"carcass","min":[1.8,200.2,191.8],"max":[59.2,202.0,248.2],"unit":"overhead_cabinet"},{"id":"ofc_shelf","role":"carcass","min":[1.8,113.8,220],"max":[59.2,200.2,221.8],"unit":"overhead_cabinet"},{"id":"ofc_d1","role":"front","min":[0.1,112.0,190.3],"max":[30.4,113.8,249.7],"unit":"overhead_cabinet","mover":"ofc_d1"},{"id":"ofc_d1_h","role":"metal","min":[26.3,109.6,193.3],"max":[27.5,112.0,205.3],"unit":"overhead_cabinet","mover":"ofc_d1"},{"id":"ofc_d2","role":"front","min":[30.6,112.0,190.3],"max":[60.9,113.8,249.7],"unit":"overhead_cabinet","mover":"ofc_d2"},{"id":"ofc_d2_h","role":"metal","min":[33.5,109.6,193.3],"max":[34.7,112.0,205.3],"unit":"overhead_cabinet","mover":"ofc_d2"},{"id":"ward_sa","role":"carcass","min":[86.0,0.0,0],"max":[87.8,53.2,250.0],"unit":"wardrobe"},{"id":"ward_sb","role":"carcass","min":[204.2,0.0,0],"max":[206.0,53.2,250.0],"unit":"wardrobe"},{"id":"ward_top","role":"carcass","min":[87.8,0.0,248.2],"max":[204.2,53.2,250.0],"unit":"wardrobe"},{"id":"ward_bot","role":"carcass","min":[87.8,0.0,8],"max":[204.2,53.2,9.8],"unit":"wardrobe"},{"id":"ward_back","role":"carcass","min":[87.8,0.0,9.8],"max":[204.2,1.8,248.2],"unit":"wardrobe"},{"id":"ward_pl","role":"carcass","min":[87.8,48.7,0],"max":[204.2,50.5,8],"unit":"wardrobe"},{"id":"ward_div","role":"carcass","min":[125.1,1.8,9.8],"max":[126.9,53.2,208],"unit":"wardrobe"},{"id":"ward_mid","role":"carcass","min":[87.8,1.8,208],"max":[204.2,53.2,209.8],"unit":"wardrobe"},{"id":"ward_tdiv1","role":"carcass","min":[125.1,1.8,209.8],"max":[126.9,53.2,248.2],"unit":"wardrobe"},{"id":"ward_tdiv2","role":"carcass","min":[165.1,1.8,209.8],"max":[166.9,53.2,248.2],"unit":"wardrobe"},{"id":"ward_sh0","role":"carcass","min":[87.8,1.8,45],"max":[125.1,53.2,46.8],"unit":"wardrobe"},{"id":"ward_sh1","role":"carcass","min":[87.8,1.8,85],"max":[125.1,53.2,86.8],"unit":"wardrobe"},{"id":"ward_sh2","role":"carcass","min":[87.8,1.8,125],"max":[125.1,53.2,126.8],"unit":"wardrobe"},{"id":"ward_sh3","role":"carcass","min":[87.8,1.8,165],"max":[125.1,53.2,166.8],"unit":"wardrobe"},{"id":"ward_rail","role":"metal","min":[126.9,26.3,193.8],"max":[204.2,28.7,196.2],"unit":"wardrobe","shape":"cylx"},{"id":"ward_rail_c0","role":"cloth1","min":[129.6,6.5,108.3],"max":[132.2,48.5,192],"unit":"wardrobe","soft":1},{"id":"ward_rail_c1","role":"cloth2","min":[135.9,6.5,82.7],"max":[138.5,48.5,192],"unit":"wardrobe","soft":1},{"id":"ward_rail_c2","role":"cloth3","min":[142.2,6.5,57.0],"max":[144.8,48.5,192],"unit":"wardrobe","soft":1},{"id":"ward_rail_c3","role":"cloth4","min":[148.5,6.5,95.5],"max":[151.1,48.5,192],"unit":"wardrobe","soft":1},{"id":"ward_rail_c4","role":"cloth1","min":[154.8,6.5,69.8],"max":[157.4,48.5,192],"unit":"wardrobe","soft":1},{"id":"ward_rail_c5","role":"cloth2","min":[161.1,6.5,108.3],"max":[163.7,48.5,192],"unit":"wardrobe","soft":1},{"id":"ward_rail_c6","role":"cloth3","min":[167.4,6.5,82.7],"max":[170.0,48.5,192],"unit":"wardrobe","soft":1},{"id":"ward_rail_c7","role":"cloth4","min":[173.7,6.5,57.0],"max":[176.3,48.5,192],"unit":"wardrobe","soft":1},{"id":"ward_rail_c8","role":"cloth1","min":[180.0,6.5,95.5],"max":[182.6,48.5,192],"unit":"wardrobe","soft":1},{"id":"ward_rail_c9","role":"cloth2","min":[186.3,6.5,69.8],"max":[188.9,48.5,192],"unit":"wardrobe","soft":1},{"id":"ward_rail_c10","role":"cloth3","min":[192.6,6.5,108.3],"max":[195.2,48.5,192],"unit":"wardrobe","soft":1},{"id":"ward_rail_c11","role":"cloth4","min":[198.9,6.5,82.7],"max":[201.5,48.5,192],"unit":"wardrobe","soft":1},{"id":"ward_fixed","role":"front","min":[166.2,53.2,8.3],"max":[205.8,55.0,207.7],"unit":"wardrobe"},{"id":"ward_d1","role":"front","min":[86.2,53.2,8.3],"max":[125.8,55.0,207.7],"unit":"wardrobe","mover":"ward_d1"},{"id":"ward_d1_h","role":"metal","min":[121.8,55.0,98],"max":[123.0,57.4,122],"unit":"wardrobe","mover":"ward_d1"},{"id":"ward_d2","role":"front","min":[126.2,53.2,8.3],"max":[165.8,55.0,207.7],"unit":"wardrobe","mover":"ward_d2"},{"id":"ward_d2_h","role":"metal","min":[129.0,55.0,98],"max":[130.2,57.4,122],"unit":"wardrobe","mover":"ward_d2"},{"id":"ward_t1","role":"front","min":[86.2,53.2,208],"max":[125.8,55.0,249.7],"unit":"wardrobe","mover":"ward_t1"},{"id":"ward_t1_h","role":"metal","min":[121.8,55.0,211],"max":[123.0,57.4,223],"unit":"wardrobe","mover":"ward_t1"},{"id":"ward_t2","role":"front","min":[126.2,53.2,208],"max":[165.8,55.0,249.7],"unit":"wardrobe","mover":"ward_t2"},{"id":"ward_t2_h","role":"metal","min":[129.0,55.0,211],"max":[130.2,57.4,223],"unit":"wardrobe","mover":"ward_t2"},{"id":"ward_t3","role":"front","min":[166.2,53.2,208],"max":[205.8,55.0,249.7],"unit":"wardrobe","mover":"ward_t3"},{"id":"ward_t3_h","role":"metal","min":[169.0,55.0,211],"max":[170.2,57.4,223],"unit":"wardrobe","mover":"ward_t3"},{"id":"desk_top","role":"desktop","min":[166.0,55,72.5],"max":[206.0,112.0,75.5],"unit":"desk"},{"id":"mirror","role":"mirror","min":[205.4,62,95],"max":[206.0,105.0,180],"unit":"desk"},{"id":"desklamp_base","role":"lampbase","min":[190.5,97.5,75.5],"max":[201.5,108.5,77.5],"unit":"lamps","shape":"cylz"},{"id":"desklamp_stem","role":"metal","min":[195.4,102.4,77.5],"max":[196.6,103.6,107.5],"unit":"lamps","shape":"cylz"},{"id":"desklamp_shade","role":"lampshade","min":[189.0,96.0,105.5],"max":[203.0,110.0,118.5],"unit":"lamps","shape":"cylz","light":1},{"id":"chair_seat","role":"chair","min":[150,66,44],"max":[188,104,47.5],"unit":"chair","soft":1},{"id":"chair_leg0","role":"metal","min":[152,68,0],"max":[155,71,44],"unit":"chair","shape":"cylz"},{"id":"chair_leg1","role":"metal","min":[183,68,0],"max":[186,71,44],"unit":"chair","shape":"cylz"},{"id":"chair_leg2","role":"metal","min":[152,99,0],"max":[155,102,44],"unit":"chair","shape":"cylz"},{"id":"chair_leg3","role":"metal","min":[183,99,0],"max":[186,102,44],"unit":"chair","shape":"cylz"},{"id":"chair_back","role":"chair","min":[150,70,62],"max":[152.5,100,80],"unit":"chair","soft":1},{"id":"sill_cushion","role":"cushion","min":[66.0,203.0,92.0],"max":[148.0,219.0,101.0],"unit":"props","soft":1}],"movers":{"drawer1":{"type":"slide","kind":"drawer","vec":[0,-50,0],"unit":"bed"},"drawer2":{"type":"slide","kind":"drawer","vec":[0,-50,0],"unit":"bed"},"drawer3":{"type":"slide","kind":"drawer","vec":[0,-50,0],"unit":"bed"},"drawer4":{"type":"slide","kind":"drawer","vec":[0,-50,0],"unit":"bed"},"ofc_d1":{"type":"hinge","kind":"door","pivot":[0,112.0],"angle":-90,"z":[190.3,249.7],"unit":"overhead_cabinet"},"ofc_d2":{"type":"hinge","kind":"door","pivot":[61.0,112.0],"angle":90,"z":[190.3,249.7],"unit":"overhead_cabinet"},"ward_d1":{"type":"hinge","kind":"door","pivot":[86.0,55.0],"angle":90,"z":[8.3,207.7],"unit":"wardrobe"},"ward_d2":{"type":"hinge","kind":"door","pivot":[166.0,55.0],"angle":-90,"z":[8.3,207.7],"unit":"wardrobe"},"ward_t1":{"type":"hinge","kind":"door","pivot":[86.0,55.0],"angle":90,"z":[208,249.7],"unit":"wardrobe"},"ward_t2":{"type":"hinge","kind":"door","pivot":[166.0,55.0],"angle":-90,"z":[208,249.7],"unit":"wardrobe"},"ward_t3":{"type":"hinge","kind":"door","pivot":[206.0,55.0],"angle":-90,"z":[208,249.7],"unit":"wardrobe"}},"check":{"hard":[],"pairs":[["room_door","drawer1"],["room_door","drawer2"],["drawer2","ward_d1"],["drawer3","ward_d1"],["drawer3","ward_d2"],["drawer4","ward_d2"]],"chair":["drawer3","drawer4","ward_d2"],"fixed_overlaps":[],"seat":92,"headroom":98,"knee_block":[],"floor_m2":1.69,"stats":{"long_hang":77.3,"short_hang":0.0,"drawers":4,"drawer_litres":765.1,"shelf_m2":1.8,"cupboard_litres":541.1}}},"B":{"name":"Daybed","blurb":"Bed along the right-hand wall at sofa height, so it doubles as a daybed; full-width desk under the window; wardrobe on the left; cupboards above the bed.","parts":[{"id":"bed_pl","role":"carcass","min":[118.2,1.8,0],"max":[120.0,200.2,6],"unit":"bed"},{"id":"bed_bot","role":"carcass","min":[115.8,1.8,6],"max":[204.2,200.2,7.8],"unit":"bed"},{"id":"bed_sa","role":"carcass","min":[115.8,0,0],"max":[206.0,1.8,38.2],"unit":"bed"},{"id":"bed_sb","role":"carcass","min":[115.8,200.2,0],"max":[206.0,202.0,38.2],"unit":"bed"},{"id":"bed_back","role":"carcass","min":[204.2,1.8,7.8],"max":[206.0,200.2,38.2],"unit":"bed"},{"id":"bed_top","role":"front","min":[114.0,0,38.2],"max":[206.0,202.0,40],"unit":"bed"},{"id":"bed_div0","role":"carcass","min":[115.8,39.1,7.8],"max":[204.2,40.9,38.2],"unit":"bed"},{"id":"bed_div1","role":"carcass","min":[115.8,79.1,7.8],"max":[204.2,80.9,38.2],"unit":"bed"},{"id":"bed_div2","role":"carcass","min":[115.8,140.1,7.8],"max":[204.2,141.9,38.2],"unit":"bed"},{"id":"drawer1","role":"front","min":[114.0,80.2,6.3],"max":[115.8,140.8,37.9],"unit":"bed","mover":"drawer1"},{"id":"drawer1_s1","role":"carcass","min":[115.8,82.5,9.3],"max":[194.0,84.0,31.9],"unit":"bed","mover":"drawer1"},{"id":"drawer1_s2","role":"carcass","min":[115.8,137.0,9.3],"max":[194.0,138.5,31.9],"unit":"bed","mover":"drawer1"},{"id":"drawer1_bk","role":"carcass","min":[192.5,84.0,9.3],"max":[194.0,137.0,31.9],"unit":"bed","mover":"drawer1"},{"id":"drawer1_bt","role":"carcass","min":[115.8,84.0,9.3],"max":[192.5,137.0,10.5],"unit":"bed","mover":"drawer1"},{"id":"drawer1_h","role":"metal","min":[111.6,102.5,29.9],"max":[114.0,118.5,31.1],"unit":"bed","mover":"drawer1"},{"id":"drawer2","role":"front","min":[114.0,141.2,6.3],"max":[115.8,201.8,37.9],"unit":"bed","mover":"drawer2"},{"id":"drawer2_s1","role":"carcass","min":[115.8,143.5,9.3],"max":[194.0,145.0,31.9],"unit":"bed","mover":"drawer2"},{"id":"drawer2_s2","role":"carcass","min":[115.8,198.0,9.3],"max":[194.0,199.5,31.9],"unit":"bed","mover":"drawer2"},{"id":"drawer2_bk","role":"carcass","min":[192.5,145.0,9.3],"max":[194.0,198.0,31.9],"unit":"bed","mover":"drawer2"},{"id":"drawer2_bt","role":"carcass","min":[115.8,145.0,9.3],"max":[192.5,198.0,10.5],"unit":"bed","mover":"drawer2"},{"id":"drawer2_h","role":"metal","min":[111.6,163.5,29.9],"max":[114.0,179.5,31.1],"unit":"bed","mover":"drawer2"},{"id":"ledge","role":"front","min":[114.0,0,40],"max":[206.0,12,72],"unit":"bed"},{"id":"mattress","role":"mattress","min":[115,12.5,40],"max":[205.0,201.5,60],"unit":"bedding","soft":1},{"id":"pillow","role":"pillow","min":[123,16.5,59],"max":[197.0,52.5,71],"unit":"bedding","soft":1},{"id":"duvet","role":"duvet","min":[113.5,54.5,55],"max":[205.5,202.0,65],"unit":"bedding","soft":1},{"id":"cushion1","role":"cushion","min":[190.0,62,60],"max":[205.0,112,100],"unit":"bedding","soft":1},{"id":"cushion2","role":"cushion2","min":[190.0,116,60],"max":[205.0,166,100],"unit":"bedding","soft":1},{"id":"socket","role":"socket","min":[178,0,76],"max":[192,0.9,84.5],"unit":"bed"},{"id":"bedlamp_base","role":"lampbase","min":[190.5,0.5,72],"max":[201.5,11.5,74],"unit":"lamps","shape":"cylz"},{"id":"bedlamp_stem","role":"metal","min":[195.4,5.4,74],"max":[196.6,6.6,83],"unit":"lamps","shape":"cylz"},{"id":"bedlamp_shade","role":"lampshade","min":[190,0,81],"max":[202,12,94],"unit":"lamps","shape":"cylz","light":1},{"id":"obc_sa","role":"carcass","min":[177.8,0,185],"max":[206.0,1.8,250.0],"unit":"overhead_cabinet"},{"id":"obc_sb","role":"carcass","min":[177.8,200.2,185],"max":[206.0,202.0,250.0],"unit":"overhead_cabinet"},{"id":"obc_top","role":"carcass","min":[177.8,1.8,248.2],"max":[206.0,200.2,250.0],"unit":"overhead_cabinet"},{"id":"obc_bot","role":"carcass","min":[177.8,1.8,185.0],"max":[206.0,200.2,186.8],"unit":"overhead_cabinet"},{"id":"obc_back","role":"carcass","min":[204.2,1.8,186.8],"max":[206.0,200.2,248.2],"unit":"overhead_cabinet"},{"id":"obc_div","role":"carcass","min":[177.8,100.1,186.8],"max":[204.2,101.9,248.2],"unit":"overhead_cabinet"},{"id":"obc_sh1","role":"carcass","min":[177.8,1.8,217],"max":[204.2,100.1,218.8],"unit":"overhead_cabinet"},{"id":"obc_sh2","role":"carcass","min":[177.8,101.9,217],"max":[204.2,200.2,218.8],"unit":"overhead_cabinet"},{"id":"obc_d1","role":"front","min":[176.0,0.1,185.3],"max":[177.8,50.4,249.7],"unit":"overhead_cabinet","mover":"obc_d1"},{"id":"obc_d1_h","role":"metal","min":[173.6,46.3,188.3],"max":[176.0,47.5,200.3],"unit":"overhead_cabinet","mover":"obc_d1"},{"id":"obc_d2","role":"front","min":[176.0,50.6,185.3],"max":[177.8,100.8,249.7],"unit":"overhead_cabinet","mover":"obc_d2"},{"id":"obc_d2_h","role":"metal","min":[173.6,53.5,188.3],"max":[176.0,54.7,200.3],"unit":"overhead_cabinet","mover":"obc_d2"},{"id":"obc_d3","role":"front","min":[176.0,101.2,185.3],"max":[177.8,151.3,249.7],"unit":"overhead_cabinet","mover":"obc_d3"},{"id":"obc_d3_h","role":"metal","min":[173.6,147.3,188.3],"max":[176.0,148.5,200.3],"unit":"overhead_cabinet","mover":"obc_d3"},{"id":"obc_d4","role":"front","min":[176.0,151.7,185.3],"max":[177.8,201.8,249.7],"unit":"overhead_cabinet","mover":"obc_d4"},{"id":"obc_d4_h","role":"metal","min":[173.6,154.5,188.3],"max":[176.0,155.7,200.3],"unit":"overhead_cabinet","mover":"obc_d4"},{"id":"ward_sa","role":"carcass","min":[0.0,80,0],"max":[53.2,81.8,250.0],"unit":"wardrobe"},{"id":"ward_sb","role":"carcass","min":[0.0,158.2,0],"max":[53.2,160,250.0],"unit":"wardrobe"},{"id":"ward_top","role":"carcass","min":[0.0,81.8,248.2],"max":[53.2,158.2,250.0],"unit":"wardrobe"},{"id":"ward_bot","role":"carcass","min":[0.0,81.8,8],"max":[53.2,158.2,9.8],"unit":"wardrobe"},{"id":"ward_back","role":"carcass","min":[0.0,81.8,9.8],"max":[1.8,158.2,248.2],"unit":"wardrobe"},{"id":"ward_pl","role":"carcass","min":[48.7,81.8,0],"max":[50.5,158.2,8],"unit":"wardrobe"},{"id":"ward_mid","role":"carcass","min":[1.8,81.8,208],"max":[53.2,158.2,209.8],"unit":"wardrobe"},{"id":"ward_tdiv","role":"carcass","min":[1.8,119.1,209.8],"max":[53.2,120.9,248.2],"unit":"wardrobe"},{"id":"ward_shoe","role":"carcass","min":[1.8,81.8,30],"max":[53.2,158.2,31.8],"unit":"wardrobe"},{"id":"ward_rail","role":"metal","min":[26.3,81.8,193.8],"max":[28.7,158.2,196.2],"unit":"wardrobe","shape":"cyly"},{"id":"ward_rail_c0","role":"cloth3","min":[6.5,84.5,78.6],"max":[48.5,87.1,192],"unit":"wardrobe","soft":1},{"id":"ward_rail_c1","role":"cloth4","min":[6.5,91.3,52.0],"max":[48.5,93.9,192],"unit":"wardrobe","soft":1},{"id":"ward_rail_c2","role":"cloth1","min":[6.5,98.2,91.9],"max":[48.5,100.8,192],"unit":"wardrobe","soft":1},{"id":"ward_rail_c3","role":"cloth2","min":[6.5,105.0,65.3],"max":[48.5,107.6,192],"unit":"wardrobe","soft":1},{"id":"ward_rail_c4","role":"cloth3","min":[6.5,111.9,105.2],"max":[48.5,114.5,192],"unit":"wardrobe","soft":1},{"id":"ward_rail_c5","role":"cloth4","min":[6.5,118.7,78.6],"max":[48.5,121.3,192],"unit":"wardrobe","soft":1},{"id":"ward_rail_c6","role":"cloth1","min":[6.5,125.5,52.0],"max":[48.5,128.1,192],"unit":"wardrobe","soft":1},{"id":"ward_rail_c7","role":"cloth2","min":[6.5,132.4,91.9],"max":[48.5,135.0,192],"unit":"wardrobe","soft":1},{"id":"ward_rail_c8","role":"cloth3","min":[6.5,139.2,65.3],"max":[48.5,141.8,192],"unit":"wardrobe","soft":1},{"id":"ward_rail_c9","role":"cloth4","min":[6.5,146.1,105.2],"max":[48.5,148.7,192],"unit":"wardrobe","soft":1},{"id":"ward_rail_c10","role":"cloth1","min":[6.5,152.9,78.6],"max":[48.5,155.5,192],"unit":"wardrobe","soft":1},{"id":"ward_d1","role":"front","min":[53.2,80.2,8.3],"max":[55.0,119.8,207.7],"unit":"wardrobe","mover":"ward_d1"},{"id":"ward_d1_h","role":"metal","min":[55.0,115.8,98],"max":[57.4,117.0,122],"unit":"wardrobe","mover":"ward_d1"},{"id":"ward_d2","role":"front","min":[53.2,120.2,8.3],"max":[55.0,159.8,207.7],"unit":"wardrobe","mover":"ward_d2"},{"id":"ward_d2_mir","role":"mirror","min":[55.0,126,53.3],"max":[55.5,154,187.7],"unit":"wardrobe","mover":"ward_d2"},{"id":"ward_d2_h","role":"metal","min":[55.0,123.0,98],"max":[57.4,124.2,122],"unit":"wardrobe","mover":"ward_d2"},{"id":"ward_t1","role":"front","min":[53.2,80.2,208],"max":[55.0,119.8,249.7],"unit":"wardrobe","mover":"ward_t1"},{"id":"ward_t1_h","role":"metal","min":[55.0,115.8,211],"max":[57.4,117.0,223],"unit":"wardrobe","mover":"ward_t1"},{"id":"ward_t2","role":"front","min":[53.2,120.2,208],"max":[55.0,159.8,249.7],"unit":"wardrobe","mover":"ward_t2"},{"id":"ward_t2_h","role":"metal","min":[55.0,123.0,211],"max":[57.4,124.2,223],"unit":"wardrobe","mover":"ward_t2"},{"id":"desk_top","role":"desktop","min":[0,160,72],"max":[112,202.0,74.5],"unit":"desk"},{"id":"desk_sh0","role":"front","min":[0,178.0,112],"max":[58,202.0,113.8],"unit":"desk_shelves"},{"id":"desk_sh1","role":"front","min":[0,178.0,146],"max":[58,202.0,147.8],"unit":"desk_shelves"},{"id":"desk_sh2","role":"front","min":[0,178.0,180],"max":[58,202.0,181.8],"unit":"desk_shelves"},{"id":"desk_sh_end","role":"front","min":[58,178.0,112],"max":[59.8,202.0,181.8],"unit":"desk_shelves"},{"id":"desklamp_base","role":"lampbase","min":[24.5,184.5,74.5],"max":[35.5,195.5,76.5],"unit":"lamps","shape":"cylz"},{"id":"desklamp_stem","role":"metal","min":[29.4,189.4,76.5],"max":[30.6,190.6,106.5],"unit":"lamps","shape":"cylz"},{"id":"desklamp_shade","role":"lampshade","min":[23,183,104.5],"max":[37,197,117.5],"unit":"lamps","shape":"cylz","light":1},{"id":"chair_seat","role":"chair","min":[68,138,44],"max":[106,176,47.5],"unit":"chair","soft":1},{"id":"chair_leg0","role":"metal","min":[70,140,0],"max":[73,143,44],"unit":"chair","shape":"cylz"},{"id":"chair_leg1","role":"metal","min":[101,140,0],"max":[104,143,44],"unit":"chair","shape":"cylz"},{"id":"chair_leg2","role":"metal","min":[70,171,0],"max":[73,174,44],"unit":"chair","shape":"cylz"},{"id":"chair_leg3","role":"metal","min":[101,171,0],"max":[104,174,44],"unit":"chair","shape":"cylz"},{"id":"chair_back","role":"chair","min":[72,138,62],"max":[102,140.5,80],"unit":"chair","soft":1}],"movers":{"drawer1":{"type":"slide","kind":"drawer","vec":[-55,0,0],"unit":"bed"},"drawer2":{"type":"slide","kind":"drawer","vec":[-55,0,0],"unit":"bed"},"obc_d1":{"type":"hinge","kind":"door","pivot":[176.0,0],"angle":90,"z":[185.3,249.7],"unit":"overhead_cabinet"},"obc_d2":{"type":"hinge","kind":"door","pivot":[176.0,101],"angle":-90,"z":[185.3,249.7],"unit":"overhead_cabinet"},"obc_d3":{"type":"hinge","kind":"door","pivot":[176.0,101],"angle":90,"z":[185.3,249.7],"unit":"overhead_cabinet"},"obc_d4":{"type":"hinge","kind":"door","pivot":[176.0,202.0],"angle":-90,"z":[185.3,249.7],"unit":"overhead_cabinet"},"ward_d1":{"type":"hinge","kind":"door","pivot":[55.0,80],"angle":-90,"z":[8.3,207.7],"unit":"wardrobe"},"ward_d2":{"type":"hinge","kind":"door","pivot":[55.0,160],"angle":90,"z":[8.3,207.7],"unit":"wardrobe"},"ward_t1":{"type":"hinge","kind":"door","pivot":[55.0,80],"angle":-90,"z":[208,249.7],"unit":"wardrobe"},"ward_t2":{"type":"hinge","kind":"door","pivot":[55.0,160],"angle":90,"z":[208,249.7],"unit":"wardrobe"}},"check":{"hard":[],"pairs":[["drawer1","ward_d1"],["drawer1","ward_d2"],["drawer2","ward_d2"]],"chair":["drawer1","drawer2","ward_d2"],"fixed_overlaps":[],"seat":60,"headroom":125,"knee_block":[],"floor_m2":1.87,"stats":{"long_hang":76.4,"short_hang":0.0,"drawers":2,"drawer_litres":197.9,"shelf_m2":2.0,"cupboard_litres":464.8}}},"C":{"name":"Mid-sleeper","blurb":"Bed along the right-hand wall at mid-sleeper height (mattress top 130 cm), with a sliding-door wardrobe underneath; desk under the window; tall wardrobe on the left.","parts":[{"id":"bed_pl","role":"carcass","min":[121.7,1.8,0],"max":[123.5,200.2,6],"unit":"bed"},{"id":"bed_bot","role":"carcass","min":[119.0,1.8,6],"max":[204.2,200.2,7.8],"unit":"bed"},{"id":"bed_sa","role":"carcass","min":[114.0,0,0],"max":[206.0,1.8,108.2],"unit":"bed"},{"id":"bed_sb","role":"carcass","min":[114.0,200.2,0],"max":[206.0,202.0,108.2],"unit":"bed"},{"id":"bed_back","role":"carcass","min":[204.2,1.8,7.8],"max":[206.0,200.2,108.2],"unit":"bed"},{"id":"bed_deck","role":"front","min":[114.0,0,108.2],"max":[206.0,202.0,110.0],"unit":"bed"},{"id":"bed_div","role":"carcass","min":[114.0,79.1,7.8],"max":[204.2,80.9,108.2],"unit":"bed"},{"id":"cub_sh0","role":"carcass","min":[115.8,1.8,42],"max":[204.2,79.1,43.8],"unit":"bed"},{"id":"cub_sh1","role":"carcass","min":[115.8,1.8,76],"max":[204.2,79.1,77.8],"unit":"bed"},{"id":"ub_rail","role":"metal","min":[160.8,80.9,98.8],"max":[163.2,200.2,101.2],"unit":"bed","shape":"cyly"},{"id":"ub_rail_c0","role":"cloth2","min":[141.0,83.6,38.4],"max":[183.0,86.2,97],"unit":"bed","soft":1},{"id":"ub_rail_c1","role":"cloth3","min":[141.0,92.2,22.8],"max":[183.0,94.8,97],"unit":"bed","soft":1},{"id":"ub_rail_c2","role":"cloth4","min":[141.0,100.7,46.2],"max":[183.0,103.3,97],"unit":"bed","soft":1},{"id":"ub_rail_c3","role":"cloth1","min":[141.0,109.3,30.6],"max":[183.0,111.9,97],"unit":"bed","soft":1},{"id":"ub_rail_c4","role":"cloth2","min":[141.0,117.8,15.0],"max":[183.0,120.5,97],"unit":"bed","soft":1},{"id":"ub_rail_c5","role":"cloth3","min":[141.0,126.4,38.4],"max":[183.0,129.0,97],"unit":"bed","soft":1},{"id":"ub_rail_c6","role":"cloth4","min":[141.0,135.0,22.8],"max":[183.0,137.6,97],"unit":"bed","soft":1},{"id":"ub_rail_c7","role":"cloth1","min":[141.0,143.5,46.2],"max":[183.0,146.1,97],"unit":"bed","soft":1},{"id":"ub_rail_c8","role":"cloth2","min":[141.0,152.1,30.6],"max":[183.0,154.7,97],"unit":"bed","soft":1},{"id":"ub_rail_c9","role":"cloth3","min":[141.0,160.7,15.0],"max":[183.0,163.2,97],"unit":"bed","soft":1},{"id":"ub_rail_c10","role":"cloth4","min":[141.0,169.2,38.4],"max":[183.0,171.8,97],"unit":"bed","soft":1},{"id":"ub_rail_c11","role":"cloth1","min":[141.0,177.8,22.8],"max":[183.0,180.4,97],"unit":"bed","soft":1},{"id":"ub_rail_c12","role":"cloth2","min":[141.0,186.3,46.2],"max":[183.0,188.9,97],"unit":"bed","soft":1},{"id":"ub_rail_c13","role":"cloth3","min":[141.0,194.9,30.6],"max":[183.0,197.5,97],"unit":"bed","soft":1},{"id":"ub_door1","role":"front","min":[114.0,80.2,7.8],"max":[115.8,142,107.9],"unit":"bed","mover":"ub_door1"},{"id":"ub_door1_h","role":"lampbase","min":[113.7,137,52.8],"max":[114.0,138.5,74.8],"unit":"bed","mover":"ub_door1"},{"id":"ub_door2","role":"front","min":[116.4,140,7.8],"max":[118.2,201.8,107.9],"unit":"bed","mover":"ub_door2"},{"id":"ub_door2_h","role":"lampbase","min":[116.1,143.5,52.8],"max":[116.4,145,74.8],"unit":"bed","mover":"ub_door2"},{"id":"mattress","role":"mattress","min":[116.5,12.5,110.0],"max":[205.5,201.5,130.0],"unit":"bedding","soft":1},{"id":"pillow","role":"pillow","min":[124.5,16.5,129.0],"max":[197.5,52.5,141.0],"unit":"bedding","soft":1},{"id":"duvet","role":"duvet","min":[115.0,54.5,125.0],"max":[206.0,202.0,135.0],"unit":"bedding","soft":1},{"id":"ledge","role":"front","min":[114.0,0,110.0],"max":[206.0,12,135.0],"unit":"bed"},{"id":"guard","role":"front","min":[114.0,50,110.0],"max":[116.5,202.0,148.0],"unit":"bed"},{"id":"guard_post","role":"front","min":[114.0,47,110.0],"max":[116.5,50,148.0],"unit":"bed"},{"id":"ladder_stile0","role":"front","min":[107,6,0],"max":[113.8,9,148.0],"unit":"ladder"},{"id":"ladder_stile1","role":"front","min":[107,41,0],"max":[113.8,44,148.0],"unit":"ladder"},{"id":"ladder_rung0","role":"metal","min":[108.5,9,24.6],"max":[111.3,41,27.4],"unit":"ladder","shape":"cyly"},{"id":"ladder_rung1","role":"metal","min":[108.5,9,50.6],"max":[111.3,41,53.4],"unit":"ladder","shape":"cyly"},{"id":"ladder_rung2","role":"metal","min":[108.5,9,76.6],"max":[111.3,41,79.4],"unit":"ladder","shape":"cyly"},{"id":"ladder_rung3","role":"metal","min":[108.5,9,102.6],"max":[111.3,41,105.4],"unit":"ladder","shape":"cyly"},{"id":"ladder_rung4","role":"metal","min":[108.5,9,128.6],"max":[111.3,41,131.4],"unit":"ladder","shape":"cyly"},{"id":"socket","role":"socket","min":[178,0,137.0],"max":[192,0.9,145.5],"unit":"bed"},{"id":"bedlamp_base","role":"lampbase","min":[190.5,0.5,135.0],"max":[201.5,11.5,137.0],"unit":"lamps","shape":"cylz"},{"id":"bedlamp_stem","role":"metal","min":[195.4,5.4,137.0],"max":[196.6,6.6,146.0],"unit":"lamps","shape":"cylz"},{"id":"bedlamp_shade","role":"lampshade","min":[190,0,144.0],"max":[202,12,157.0],"unit":"lamps","shape":"cylz","light":1},{"id":"ward_sa","role":"carcass","min":[0.0,80,0],"max":[53.2,81.8,250.0],"unit":"wardrobe"},{"id":"ward_sb","role":"carcass","min":[0.0,158.2,0],"max":[53.2,160,250.0],"unit":"wardrobe"},{"id":"ward_top","role":"carcass","min":[0.0,81.8,248.2],"max":[53.2,158.2,250.0],"unit":"wardrobe"},{"id":"ward_bot","role":"carcass","min":[0.0,81.8,8],"max":[53.2,158.2,9.8],"unit":"wardrobe"},{"id":"ward_back","role":"carcass","min":[0.0,81.8,9.8],"max":[1.8,158.2,248.2],"unit":"wardrobe"},{"id":"ward_pl","role":"carcass","min":[48.7,81.8,0],"max":[50.5,158.2,8],"unit":"wardrobe"},{"id":"ward_mid","role":"carcass","min":[1.8,81.8,208],"max":[53.2,158.2,209.8],"unit":"wardrobe"},{"id":"ward_tdiv","role":"carcass","min":[1.8,119.1,209.8],"max":[53.2,120.9,248.2],"unit":"wardrobe"},{"id":"ward_shoe","role":"carcass","min":[1.8,81.8,30],"max":[53.2,158.2,31.8],"unit":"wardrobe"},{"id":"ward_rail","role":"metal","min":[26.3,81.8,193.8],"max":[28.7,158.2,196.2],"unit":"wardrobe","shape":"cyly"},{"id":"ward_rail_c0","role":"cloth4","min":[6.5,84.5,65.3],"max":[48.5,87.1,192],"unit":"wardrobe","soft":1},{"id":"ward_rail_c1","role":"cloth1","min":[6.5,91.3,105.2],"max":[48.5,93.9,192],"unit":"wardrobe","soft":1},{"id":"ward_rail_c2","role":"cloth2","min":[6.5,98.2,78.6],"max":[48.5,100.8,192],"unit":"wardrobe","soft":1},{"id":"ward_rail_c3","role":"cloth3","min":[6.5,105.0,52.0],"max":[48.5,107.6,192],"unit":"wardrobe","soft":1},{"id":"ward_rail_c4","role":"cloth4","min":[6.5,111.9,91.9],"max":[48.5,114.5,192],"unit":"wardrobe","soft":1},{"id":"ward_rail_c5","role":"cloth1","min":[6.5,118.7,65.3],"max":[48.5,121.3,192],"unit":"wardrobe","soft":1},{"id":"ward_rail_c6","role":"cloth2","min":[6.5,125.5,105.2],"max":[48.5,128.1,192],"unit":"wardrobe","soft":1},{"id":"ward_rail_c7","role":"cloth3","min":[6.5,132.4,78.6],"max":[48.5,135.0,192],"unit":"wardrobe","soft":1},{"id":"ward_rail_c8","role":"cloth4","min":[6.5,139.2,52.0],"max":[48.5,141.8,192],"unit":"wardrobe","soft":1},{"id":"ward_rail_c9","role":"cloth1","min":[6.5,146.1,91.9],"max":[48.5,148.7,192],"unit":"wardrobe","soft":1},{"id":"ward_rail_c10","role":"cloth2","min":[6.5,152.9,65.3],"max":[48.5,155.5,192],"unit":"wardrobe","soft":1},{"id":"ward_d1","role":"front","min":[53.2,80.2,8.3],"max":[55.0,119.8,207.7],"unit":"wardrobe","mover":"ward_d1"},{"id":"ward_d1_h","role":"metal","min":[55.0,115.8,98],"max":[57.4,117.0,122],"unit":"wardrobe","mover":"ward_d1"},{"id":"ward_d2","role":"front","min":[53.2,120.2,8.3],"max":[55.0,159.8,207.7],"unit":"wardrobe","mover":"ward_d2"},{"id":"ward_d2_mir","role":"mirror","min":[55.0,126,53.3],"max":[55.5,154,187.7],"unit":"wardrobe","mover":"ward_d2"},{"id":"ward_d2_h","role":"metal","min":[55.0,123.0,98],"max":[57.4,124.2,122],"unit":"wardrobe","mover":"ward_d2"},{"id":"ward_t1","role":"front","min":[53.2,80.2,208],"max":[55.0,119.8,249.7],"unit":"wardrobe","mover":"ward_t1"},{"id":"ward_t1_h","role":"metal","min":[55.0,115.8,211],"max":[57.4,117.0,223],"unit":"wardrobe","mover":"ward_t1"},{"id":"ward_t2","role":"front","min":[53.2,120.2,208],"max":[55.0,159.8,249.7],"unit":"wardrobe","mover":"ward_t2"},{"id":"ward_t2_h","role":"metal","min":[55.0,123.0,211],"max":[57.4,124.2,223],"unit":"wardrobe","mover":"ward_t2"},{"id":"desk_top","role":"desktop","min":[0,160,72],"max":[108,202.0,74.5],"unit":"desk"},{"id":"desk_sh0","role":"front","min":[0,178.0,112],"max":[58,202.0,113.8],"unit":"desk_shelves"},{"id":"desk_sh1","role":"front","min":[0,178.0,146],"max":[58,202.0,147.8],"unit":"desk_shelves"},{"id":"desk_sh2","role":"front","min":[0,178.0,180],"max":[58,202.0,181.8],"unit":"desk_shelves"},{"id":"desk_sh_end","role":"front","min":[58,178.0,112],"max":[59.8,202.0,181.8],"unit":"desk_shelves"},{"id":"desklamp_base","role":"lampbase","min":[24.5,184.5,74.5],"max":[35.5,195.5,76.5],"unit":"lamps","shape":"cylz"},{"id":"desklamp_stem","role":"metal","min":[29.4,189.4,76.5],"max":[30.6,190.6,106.5],"unit":"lamps","shape":"cylz"},{"id":"desklamp_shade","role":"lampshade","min":[23,183,104.5],"max":[37,197,117.5],"unit":"lamps","shape":"cylz","light":1},{"id":"chair_seat","role":"chair","min":[64,138,44],"max":[102,176,47.5],"unit":"chair","soft":1},{"id":"chair_leg0","role":"metal","min":[66,140,0],"max":[69,143,44],"unit":"chair","shape":"cylz"},{"id":"chair_leg1","role":"metal","min":[97,140,0],"max":[100,143,44],"unit":"chair","shape":"cylz"},{"id":"chair_leg2","role":"metal","min":[66,171,0],"max":[69,174,44],"unit":"chair","shape":"cylz"},{"id":"chair_leg3","role":"metal","min":[97,171,0],"max":[100,174,44],"unit":"chair","shape":"cylz"},{"id":"chair_back","role":"chair","min":[68,138,62],"max":[98,140.5,80],"unit":"chair","soft":1}],"movers":{"ub_door1":{"type":"slide","kind":"slider","vec":[0,58,0],"unit":"bed"},"ub_door2":{"type":"slide","kind":"slider","vec":[0,-58,0],"unit":"bed"},"ward_d1":{"type":"hinge","kind":"door","pivot":[55.0,80],"angle":-90,"z":[8.3,207.7],"unit":"wardrobe"},"ward_d2":{"type":"hinge","kind":"door","pivot":[55.0,160],"angle":90,"z":[8.3,207.7],"unit":"wardrobe"},"ward_t1":{"type":"hinge","kind":"door","pivot":[55.0,80],"angle":-90,"z":[208,249.7],"unit":"wardrobe"},"ward_t2":{"type":"hinge","kind":"door","pivot":[55.0,160],"angle":90,"z":[208,249.7],"unit":"wardrobe"}},"check":{"hard":[],"pairs":[],"chair":["ward_d2"],"fixed_overlaps":[],"seat":130.0,"headroom":120.0,"knee_block":[],"floor_m2":1.92,"stats":{"long_hang":76.4,"short_hang":119.3,"drawers":0,"drawer_litres":0.0,"shelf_m2":2.2,"cupboard_litres":1170.8}}},"D":{"name":"Sliding wardrobe","blurb":"Bed across the window as now, but the wardrobe moves to the right-hand wall with sliding doors; desk by the door with shelves above.","parts":[{"id":"bed_pl","role":"carcass","min":[1.8,116.2,0],"max":[204.2,118.0,8],"unit":"bed"},{"id":"bed_bot","role":"carcass","min":[1.8,113.8,8],"max":[204.2,200.2,9.8],"unit":"bed"},{"id":"bed_sa","role":"carcass","min":[0,113.8,0],"max":[1.8,202.0,70.2],"unit":"bed"},{"id":"bed_sb","role":"carcass","min":[204.2,113.8,0],"max":[206.0,202.0,70.2],"unit":"bed"},{"id":"bed_back","role":"carcass","min":[1.8,200.2,9.8],"max":[204.2,202.0,70.2],"unit":"bed"},{"id":"bed_top","role":"front","min":[0,112.0,70.2],"max":[206.0,202.0,72],"unit":"bed"},{"id":"bed_div1","role":"carcass","min":[47.8,113.8,9.8],"max":[49.6,200.2,70.2],"unit":"bed"},{"id":"bed_div2","role":"carcass","min":[96.4,113.8,9.8],"max":[98.2,200.2,70.2],"unit":"bed"},{"id":"bed_div3","role":"carcass","min":[145.1,113.8,9.8],"max":[146.9,200.2,70.2],"unit":"bed"},{"id":"drawer1","role":"front","min":[0.1,112.0,8.3],"max":[48.5,113.8,69.9],"unit":"bed","mover":"drawer1"},{"id":"drawer1_s1","role":"carcass","min":[2.5,113.8,11.3],"max":[4.0,192.0,63.9],"unit":"bed","mover":"drawer1"},{"id":"drawer1_s2","role":"carcass","min":[44.7,113.8,11.3],"max":[46.2,192.0,63.9],"unit":"bed","mover":"drawer1"},{"id":"drawer1_bk","role":"carcass","min":[4.0,190.5,11.3],"max":[44.7,192.0,63.9],"unit":"bed","mover":"drawer1"},{"id":"drawer1_bt","role":"carcass","min":[4.0,113.8,11.3],"max":[44.7,190.5,12.5],"unit":"bed","mover":"drawer1"},{"id":"drawer1_h","role":"metal","min":[16.3,109.6,61.9],"max":[32.3,112.0,63.1],"unit":"bed","mover":"drawer1"},{"id":"drawer2","role":"front","min":[48.8,112.0,8.3],"max":[97.2,113.8,69.9],"unit":"bed","mover":"drawer2"},{"id":"drawer2_s1","role":"carcass","min":[51.2,113.8,11.3],"max":[52.7,192.0,63.9],"unit":"bed","mover":"drawer2"},{"id":"drawer2_s2","role":"carcass","min":[93.3,113.8,11.3],"max":[94.8,192.0,63.9],"unit":"bed","mover":"drawer2"},{"id":"drawer2_bk","role":"carcass","min":[52.7,190.5,11.3],"max":[93.3,192.0,63.9],"unit":"bed","mover":"drawer2"},{"id":"drawer2_bt","role":"carcass","min":[52.7,113.8,11.3],"max":[93.3,190.5,12.5],"unit":"bed","mover":"drawer2"},{"id":"drawer2_h","role":"metal","min":[65.0,109.6,61.9],"max":[81.0,112.0,63.1],"unit":"bed","mover":"drawer2"},{"id":"drawer3","role":"front","min":[97.5,112.0,8.3],"max":[145.8,113.8,69.9],"unit":"bed","mover":"drawer3"},{"id":"drawer3_s1","role":"carcass","min":[99.8,113.8,11.3],"max":[101.3,192.0,63.9],"unit":"bed","mover":"drawer3"},{"id":"drawer3_s2","role":"carcass","min":[142.0,113.8,11.3],"max":[143.5,192.0,63.9],"unit":"bed","mover":"drawer3"},{"id":"drawer3_bk","role":"carcass","min":[101.3,190.5,11.3],"max":[142.0,192.0,63.9],"unit":"bed","mover":"drawer3"},{"id":"drawer3_bt","role":"carcass","min":[101.3,113.8,11.3],"max":[142.0,190.5,12.5],"unit":"bed","mover":"drawer3"},{"id":"drawer3_h","role":"metal","min":[113.7,109.6,61.9],"max":[129.7,112.0,63.1],"unit":"bed","mover":"drawer3"},{"id":"bed_endpanel","role":"front","min":[146.2,112.0,8.3],"max":[205.8,113.8,69.9],"unit":"bed"},{"id":"mattress","role":"mattress","min":[16.5,113.0,72],"max":[205.5,201.0,92],"unit":"bedding","soft":1},{"id":"pillow","role":"pillow","min":[20.5,121.0,91],"max":[56.5,193.0,103],"unit":"bedding","soft":1},{"id":"duvet","role":"duvet","min":[58.5,111.5,87],"max":[206.0,201.5,97],"unit":"bedding","soft":1},{"id":"head_front","role":"front","min":[0,112.0,72],"max":[16.0,113.8,200],"unit":"head_shelves"},{"id":"head_shelf0","role":"front","min":[0,113.8,72],"max":[16.0,202.0,73.8],"unit":"head_shelves"},{"id":"head_shelf1","role":"front","min":[0,113.8,104],"max":[16.0,202.0,105.8],"unit":"head_shelves"},{"id":"head_shelf2","role":"front","min":[0,113.8,136],"max":[16.0,202.0,137.8],"unit":"head_shelves"},{"id":"head_shelf3","role":"front","min":[0,113.8,168],"max":[16.0,202.0,169.8],"unit":"head_shelves"},{"id":"head_shelf4","role":"front","min":[0,113.8,198.2],"max":[16.0,202.0,200.0],"unit":"head_shelves"},{"id":"socket","role":"socket","min":[0,150,78],"max":[0.9,164,86.5],"unit":"head_shelves"},{"id":"bedlamp_base","role":"lampbase","min":[2.5,126.5,73.8],"max":[13.5,137.5,75.8],"unit":"lamps","shape":"cylz"},{"id":"bedlamp_stem","role":"metal","min":[7.4,131.4,75.8],"max":[8.6,132.6,84.8],"unit":"lamps","shape":"cylz"},{"id":"bedlamp_shade","role":"lampshade","min":[2,126,82.8],"max":[14,138,95.8],"unit":"lamps","shape":"cylz","light":1},{"id":"sill_cushion","role":"cushion","min":[66.0,203.0,92.0],"max":[148.0,219.0,101.0],"unit":"props","soft":1},{"id":"ward_sa","role":"carcass","min":[151.0,0,0],"max":[206.0,1.8,250.0],"unit":"wardrobe"},{"id":"ward_sb","role":"carcass","min":[151.0,108.2,0],"max":[206.0,110,250.0],"unit":"wardrobe"},{"id":"ward_top","role":"carcass","min":[151.0,1.8,248.2],"max":[206.0,108.2,250.0],"unit":"wardrobe"},{"id":"ward_bot","role":"carcass","min":[151.0,1.8,8],"max":[206.0,108.2,9.8],"unit":"wardrobe"},{"id":"ward_back","role":"carcass","min":[204.2,1.8,9.8],"max":[206.0,108.2,248.2],"unit":"wardrobe"},{"id":"ward_pl","role":"carcass","min":[153.7,1.8,0],"max":[155.5,108.2,8],"unit":"wardrobe"},{"id":"ward_div","role":"carcass","min":[151.0,54.1,9.8],"max":[204.2,55.9,210],"unit":"wardrobe"},{"id":"ward_upper","role":"carcass","min":[151.0,1.8,210],"max":[204.2,108.2,211.8],"unit":"wardrobe"},{"id":"ward_rail1","role":"metal","min":[177.3,1.8,196.8],"max":[179.7,54.1,199.2],"unit":"wardrobe","shape":"cyly"},{"id":"ward_rail1_c0","role":"cloth2","min":[157.5,4.5,134.2],"max":[199.5,7.1,195],"unit":"wardrobe","soft":1},{"id":"ward_rail1_c1","role":"cloth3","min":[157.5,13.4,118.1],"max":[199.5,16.0,195],"unit":"wardrobe","soft":1},{"id":"ward_rail1_c2","role":"cloth4","min":[157.5,22.2,142.3],"max":[199.5,24.8,195],"unit":"wardrobe","soft":1},{"id":"ward_rail1_c3","role":"cloth1","min":[157.5,31.1,126.2],"max":[199.5,33.7,195],"unit":"wardrobe","soft":1},{"id":"ward_rail1_c4","role":"cloth2","min":[157.5,39.9,110.0],"max":[199.5,42.5,195],"unit":"wardrobe","soft":1},{"id":"ward_rail1_c5","role":"cloth3","min":[157.5,48.8,134.2],"max":[199.5,51.4,195],"unit":"wardrobe","soft":1},{"id":"ward_rail2","role":"metal","min":[177.3,1.8,106.8],"max":[179.7,54.1,109.2],"unit":"wardrobe","shape":"cyly"},{"id":"ward_rail2_c0","role":"cloth3","min":[157.5,4.5,40.2],"max":[199.5,7.1,105],"unit":"wardrobe","soft":1},{"id":"ward_rail2_c1","role":"cloth4","min":[157.5,13.4,25.0],"max":[199.5,16.0,105],"unit":"wardrobe","soft":1},{"id":"ward_rail2_c2","role":"cloth1","min":[157.5,22.2,47.8],"max":[199.5,24.8,105],"unit":"wardrobe","soft":1},{"id":"ward_rail2_c3","role":"cloth2","min":[157.5,31.1,32.6],"max":[199.5,33.7,105],"unit":"wardrobe","soft":1},{"id":"ward_rail2_c4","role":"cloth3","min":[157.5,39.9,55.4],"max":[199.5,42.5,105],"unit":"wardrobe","soft":1},{"id":"ward_rail2_c5","role":"cloth4","min":[157.5,48.8,40.2],"max":[199.5,51.4,105],"unit":"wardrobe","soft":1},{"id":"ward_rail3","role":"metal","min":[177.3,55.9,196.8],"max":[179.7,108.2,199.2],"unit":"wardrobe","shape":"cyly"},{"id":"ward_rail3_c0","role":"cloth1","min":[157.5,58.6,108.2],"max":[199.5,61.2,195],"unit":"wardrobe","soft":1},{"id":"ward_rail3_c1","role":"cloth2","min":[157.5,66.0,81.6],"max":[199.5,68.6,195],"unit":"wardrobe","soft":1},{"id":"ward_rail3_c2","role":"cloth3","min":[157.5,73.4,55.0],"max":[199.5,76.0,195],"unit":"wardrobe","soft":1},{"id":"ward_rail3_c3","role":"cloth4","min":[157.5,80.8,94.9],"max":[199.5,83.3,195],"unit":"wardrobe","soft":1},{"id":"ward_rail3_c4","role":"cloth1","min":[157.5,88.1,68.3],"max":[199.5,90.7,195],"unit":"wardrobe","soft":1},{"id":"ward_rail3_c5","role":"cloth2","min":[157.5,95.5,108.2],"max":[199.5,98.1,195],"unit":"wardrobe","soft":1},{"id":"ward_rail3_c6","role":"cloth3","min":[157.5,102.9,81.6],"max":[199.5,105.5,195],"unit":"wardrobe","soft":1},{"id":"ward_s1","role":"front","min":[146.0,0.2,8.3],"max":[147.8,56,249.7],"unit":"wardrobe","mover":"ward_s1"},{"id":"ward_s1_h","role":"lampbase","min":[145.7,51,116.9],"max":[146.0,52.5,138.9],"unit":"wardrobe","mover":"ward_s1"},{"id":"ward_s1_mir","role":"mirror","min":[145.6,8.2,48.3],"max":[146.0,50,219.7],"unit":"wardrobe","mover":"ward_s1"},{"id":"ward_s2","role":"front","min":[148.4,54,8.3],"max":[150.2,109.8,249.7],"unit":"wardrobe","mover":"ward_s2"},{"id":"ward_s2_h","role":"lampbase","min":[148.1,57.5,116.9],"max":[148.4,59,138.9],"unit":"wardrobe","mover":"ward_s2"},{"id":"desk_top","role":"desktop","min":[86,0,72],"max":[145.5,45,74.5],"unit":"desk"},{"id":"desk_end","role":"front","min":[86,0,0],"max":[87.8,45,72],"unit":"desk"},{"id":"desk_sh0","role":"front","min":[88,0,118],"max":[145.0,22,119.8],"unit":"desk_shelves"},{"id":"desk_sh1","role":"front","min":[88,0,152],"max":[145.0,22,153.8],"unit":"desk_shelves"},{"id":"desk_sh2","role":"front","min":[88,0,186],"max":[145.0,22,187.8],"unit":"desk_shelves"},{"id":"desklamp_base","role":"lampbase","min":[130.5,4.5,74.5],"max":[141.5,15.5,76.5],"unit":"lamps","shape":"cylz"},{"id":"desklamp_stem","role":"metal","min":[135.4,9.4,76.5],"max":[136.6,10.6,106.5],"unit":"lamps","shape":"cylz"},{"id":"desklamp_shade","role":"lampshade","min":[129.0,3,104.5],"max":[143.0,17,117.5],"unit":"lamps","shape":"cylz","light":1},{"id":"chair_seat","role":"chair","min":[98,48,44],"max":[136,86,47.5],"unit":"chair","soft":1},{"id":"chair_leg0","role":"metal","min":[100,50,0],"max":[103,53,44],"unit":"chair","shape":"cylz"},{"id":"chair_leg1","role":"metal","min":[131,50,0],"max":[134,53,44],"unit":"chair","shape":"cylz"},{"id":"chair_leg2","role":"metal","min":[100,81,0],"max":[103,84,44],"unit":"chair","shape":"cylz"},{"id":"chair_leg3","role":"metal","min":[131,81,0],"max":[134,84,44],"unit":"chair","shape":"cylz"},{"id":"chair_back","role":"chair","min":[102,83.5,62],"max":[132,86,80],"unit":"chair","soft":1}],"movers":{"drawer1":{"type":"slide","kind":"drawer","vec":[0,-60,0],"unit":"bed"},"drawer2":{"type":"slide","kind":"drawer","vec":[0,-60,0],"unit":"bed"},"drawer3":{"type":"slide","kind":"drawer","vec":[0,-60,0],"unit":"bed"},"ward_s1":{"type":"slide","kind":"slider","vec":[0,52,0],"unit":"wardrobe"},"ward_s2":{"type":"slide","kind":"slider","vec":[0,-52,0],"unit":"wardrobe"}},"check":{"hard":[],"pairs":[["room_door","drawer1"],["room_door","drawer2"]],"chair":["drawer3"],"fixed_overlaps":[],"seat":92,"headroom":158.0,"knee_block":[],"floor_m2":1.71,"stats":{"long_hang":52.3,"short_hang":104.6,"drawers":3,"drawer_litres":538.8,"shelf_m2":1.5,"cupboard_litres":213.5}}}}};
 const W = 206, D = 202, H = 250;
-const state = { side: "L", finish: "white", view: "above", dims: true, drag: "turn" };
+const state = { design: "A", side: "L", finish: "white", wall: "lime", view: "above", dims: true, drag: "turn", lamps: true };
+const key = () => state.design === "A" ? "A" + state.side : state.design;
 
-const CUT = {
-  L: { cab: "53 × 90 × 60" }, R: { cab: "61 × 90 × 60" }
+const FINISHES = [
+  ["white", "White", "#F1F0EB"], ["oak", "Light oak", "#D6B285"], ["grey", "Pale grey", "#C9CCC8"],
+  ["sage", "Sage", "#AEBFA4"], ["blue", "Powder blue", "#AFC3D3"], ["navy", "Navy", "#2F3E56"],
+];
+const WALLS = [
+  ["lime", "Lime (now)", "#A9CC3C"], ["white", "Warm white", "#EFEBE2"], ["grey", "Soft grey", "#CFD1CC"],
+  ["sage", "Sage", "#BFCBB2"], ["blue", "Pale blue", "#C9D9E6"],
+];
+const NAMES = {
+  room_door: "the room door", drawer1: "drawer 1", drawer2: "drawer 2", drawer3: "drawer 3", drawer4: "drawer 4",
+  ward_d1: "the wardrobe's left door", ward_d2: "the wardrobe's right door", ward_t1: "top cupboard 1", ward_t2: "top cupboard 2",
+  ward_t3: "top cupboard 3", ofc_d1: "the cabinet over the feet", ofc_d2: "the cabinet over the feet",
 };
-function renderCutList() {
-  const rows = [
-    ["Bed platform", "Wall to wall, 4 heavy-duty drawers, each about 51 cm wide", "206 × 90 × 72"],
-    ["Mattress", "Standard single; top level with the sill", "190 × 90 × 20"],
-    ["Head shelves", "Ledge plus 3 shelves, socket and USB", "16 × 90 × 128"],
-    ["Cabinet over feet", "98 cm clear above the mattress", CUT[state.side].cab, true],
-    ["Wardrobe", "To the ceiling; shelves, tall hanging, top boxes above 208", "120 × 55 × 250"],
-    ["Desk", "Between wardrobe and bed, top at 75", "57 × 40"],
-    ["Mirror", "On the wall above the desk", "43 × 85"],
-    ["Clear floor", "In front of the drawers, beside the desk", "166 × 57"],
-  ];
-  document.getElementById("cutlist").innerHTML = rows.map(r =>
-    `<tr><td>${r[0]}<span class="note">${r[1]}</span></td><td>${r[2]}</td></tr>`).join("");
-}
-renderCutList();
+const nm = id => NAMES[id] || id;
 
+// ---- side panel ----
+function joinList(a, w = "and") { return a.length < 2 ? a.join("") : a.slice(0, -1).join(", ") + " " + w + " " + a[a.length - 1]; }
+function renderInfo() {
+  const L = DATA.layouts[key()], c = L.check, s = c.stats;
+  document.getElementById("info-name").textContent = L.name;
+  document.getElementById("info-blurb").textContent = L.blurb;
+  const items = [];
+  items.push(["ok", c.hard.length ? "Some openings hit fixed furniture." : "Every door, drawer and slider opens without hitting fixed furniture."]);
+  const pairs = {};
+  for (const [a, b] of c.pairs) { const k = nm(a); (pairs[k] = pairs[k] || new Set()).add(nm(b)); }
+  for (const [a, set] of Object.entries(pairs)) items.push(["warn", `${a[0].toUpperCase() + a.slice(1)} clashes with ${joinList([...set], "or")} if both are open.`]);
+  if (c.chair.length) items.push(["warn", `Push the chair in before opening ${joinList([...new Set(c.chair.map(nm))])}.`]);
+  const seat = c.seat;
+  items.push(["ok", seat <= 65 ? `Bed is ${seat} cm high: she can sit on the edge with her feet on the floor.`
+    : seat <= 100 ? `Mattress top is ${seat} cm, level with the sill: she can sit on it, but her feet won't reach the floor.`
+    : `Mattress top is ${seat} cm: she climbs up and sits on top, not on the edge.`]);
+  items.push(["ok", `${c.headroom} cm clear above the mattress for sitting up.`]);
+  items.push(["ok", `${c.floor_m2.toFixed(2)} m² of open floor.`]);
+  document.getElementById("info-checks").innerHTML = items.map(([k, t]) => `<li class="${k === "warn" ? "warn" : ""}">${t}</li>`).join("");
+  const rows = [
+    ["Long hanging (dresses)", s.long_hang ? Math.round(s.long_hang) + " cm of rail" : "none"],
+    ["Short hanging", s.short_hang ? Math.round(s.short_hang) + " cm of rail" : "none"],
+    ["Drawers", s.drawers ? `${s.drawers}, ${Math.round(s.drawer_litres / 10) * 10} L` : "none"],
+    ["Cupboards", Math.round(s.cupboard_litres / 10) * 10 + " L"],
+    ["Open shelves", s.shelf_m2.toFixed(1) + " m²"],
+  ];
+  document.getElementById("info-storage").innerHTML = rows.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join("");
+  document.getElementById("side-ctl").hidden = state.design !== "A";
+}
+
+function chips(id, list, keyName, nameId, after) {
+  const el = document.getElementById(id);
+  el.innerHTML = list.map(([v, n, hex]) => `<button id="${id}-${v}" data-v="${v}" aria-label="${n}" title="${n}" aria-pressed="${state[keyName] === v}" style="background:${hex}"></button>`).join("");
+  const setName = () => { document.getElementById(nameId).textContent = list.find(x => x[0] === state[keyName])[1]; };
+  setName();
+  el.addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    state[keyName] = b.dataset.v;
+    for (const x of el.querySelectorAll("button")) x.setAttribute("aria-pressed", String(x === b));
+    setName(); after && after();
+  });
+}
+
+renderInfo();
 const stage = document.getElementById("stage");
 const canvas = document.getElementById("c");
 let renderer;
@@ -186,7 +260,6 @@ if (renderer) {
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.outputEncoding = THREE.sRGBEncoding;
-
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(45, 4 / 3, 1, 5000);
   const controls = new THREE.OrbitControls(camera, canvas);
@@ -195,63 +268,38 @@ if (renderer) {
   // model coordinates (cm): x right, y from door to window, z up  ->  three: (x, z, -y)
   const P = (x, y, z) => new THREE.Vector3(x, z, -y);
 
-  const FIN = {
-    white: { front: "#F1F0EB", carcass: "#F1F0EB", desktop: "#F1F0EB" },
-    oak:   { front: "#D6B285", carcass: "#F1F0EB", desktop: "#D6B285" },
-    grey:  { front: "#C9CCC8", carcass: "#F1F0EB", desktop: "#C9CCC8" },
-  };
   const COL = {
-    wall: "#A9CC3C", ceiling: "#F3F3EF", floor: "#8C8F93", trim: "#F7F7F4", metal: "#9DA1A5",
+    ceiling: "#F3F3EF", floor: "#8C8F93", trim: "#F7F7F4", metal: "#9DA1A5", carcass: "#F1F0EB",
     mirror: "#C9D6DE", glass: "#CFE3F2", mattress: "#EEEEEA", duvet: "#9FB4C3", pillow: "#F6F6F4",
-    cushion: "#5E7F86", socket: "#FFFFFF", lampbase: "#3B3B3B", lampshade: "#FFF0D2",
-    book1: "#3D5A73", book2: "#C9A646", book3: "#8B4A4A",
+    cushion: "#5E7F86", cushion2: "#D9C7A3", socket: "#FFFFFF", lampbase: "#3B3B3B", lampshade: "#FFF0D2",
+    book1: "#3D5A73", book2: "#C9A646", book3: "#8B4A4A", chair: "#5E7F86",
+    cloth1: "#6F8FA8", cloth2: "#E8E2D6", cloth3: "#40505E", cloth4: "#B98C8C",
   };
   const mats = {};
   function mat(role) {
     if (!mats[role]) {
       const m = new THREE.MeshStandardMaterial({ roughness: 0.85, metalness: 0 });
       if (role === "glass") { m.transparent = true; m.opacity = 0.35; }
-      if (role === "mirror") { m.roughness = 0.15; m.metalness = 0.6; }
+      if (role === "mirror") { m.roughness = 0.12; m.metalness = 0.65; }
       if (role === "metal") { m.roughness = 0.35; m.metalness = 0.7; }
-      if (role === "lampshade") { m.emissive = new THREE.Color("#FFD9A0"); m.emissiveIntensity = 0.5; }
+      if (role === "lampshade") { m.emissive = new THREE.Color("#FFD39A"); }
       mats[role] = m;
     }
     return mats[role];
   }
-  function applyFinish() {
+  function applyColours() {
     for (const [role, hex] of Object.entries(COL)) mat(role).color.set(hex).convertSRGBToLinear();
-    for (const [role, hex] of Object.entries(FIN[state.finish])) mat(role).color.set(hex).convertSRGBToLinear();
+    const fin = FINISHES.find(f => f[0] === state.finish)[2];
+    mat("front").color.set(fin).convertSRGBToLinear();
+    mat("desktop").color.set(fin).convertSRGBToLinear();
+    mat("wall").color.set(WALLS.find(w => w[0] === state.wall)[2]).convertSRGBToLinear();
+    edgeMat.color.set(state.finish === "navy" ? 0x9aa6b8 : 0x2b2f27);
   }
   const edgeMat = new THREE.LineBasicMaterial({ color: 0x2b2f27, transparent: true, opacity: 0.28 });
+  const ghostMat = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.12, depthWrite: false });
+  const ghostEdge = new THREE.LineBasicMaterial({ color: 0x2b2f27, transparent: true, opacity: 0.5 });
 
-  const groups = {};   // wall groups for auto-hiding
-  const units = {};    // unit name -> its meshes, for fading what is in the way
-  const allMeshes = [];
-  const bySide = { L: [], R: [] };
-  for (const b of MODEL.boxes) {
-    const [x0, y0, z0] = b.min, [x1, y1, z1] = b.max;
-    const g = new THREE.BoxGeometry(x1 - x0, z1 - z0, y1 - y0);
-    const mesh = new THREE.Mesh(g, mat(b.role));
-    mesh.position.copy(P((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2));
-    mesh.castShadow = !["glass", "wall", "ceiling", "floor"].includes(b.role);
-    mesh.receiveShadow = true;
-    const obj = new THREE.Group(); obj.add(mesh);
-    const structural = ["wall", "ceiling", "floor", "glass"].includes(b.role) || b.soft;
-    let edges = null;
-    if (!structural) {
-      edges = new THREE.LineSegments(new THREE.EdgesGeometry(g), edgeMat);
-      edges.position.copy(mesh.position); obj.add(edges);
-    }
-    scene.add(obj);
-    const grp = (b.id === "door_leaf" || b.id === "door_handle") ? "door_leaf" : (b.group || b.id);
-    mesh.userData = { role: b.role, unit: grp, obj };
-    allMeshes.push(mesh);
-    (units[grp] = units[grp] || []).push({ mesh, edges });
-    (groups[grp] = groups[grp] || []).push(obj);
-    if (b.when) bySide[b.when].push(obj);
-  }
-  applyFinish();
-
+  // ---- lights ----
   scene.add(new THREE.HemisphereLight(0xffffff, 0xb8bfae, 0.75));
   const sun = new THREE.DirectionalLight(0xfff4e4, 0.75);
   sun.position.copy(P(30, 520, 420)); sun.target.position.copy(P(103, 101, 0));
@@ -260,7 +308,6 @@ if (renderer) {
   sun.shadow.bias = -0.0005;
   scene.add(sun, sun.target);
   const fill = new THREE.DirectionalLight(0xffffff, 0.25); fill.position.copy(P(-200, -300, 300)); scene.add(fill);
-
   function setBackground() {
     const c = getComputedStyle(document.documentElement).getPropertyValue("--stage").trim() || "#E9EBE4";
     scene.background = new THREE.Color(c);
@@ -269,24 +316,98 @@ if (renderer) {
   if (window.matchMedia) matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", setBackground);
   new MutationObserver(setBackground).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
 
-  function applySide() {
-    for (const s of ["L", "R"]) for (const o of bySide[s]) o.userData.sideOn = (s === state.side);
+  // ---- building a design ----
+  let built = null;   // { root, units, allMeshes, movers, lights }
+  function buildPart(p, parentPos) {
+    const [x0, y0, z0] = p.min, [x1, y1, z1] = p.max;
+    const sx = x1 - x0, sy = y1 - y0, sz = z1 - z0;
+    let g;
+    if (p.shape === "cylz") g = new THREE.CylinderGeometry(sx / 2, sx / 2, sz, 20);
+    else if (p.shape === "cylx") { g = new THREE.CylinderGeometry(sz / 2, sz / 2, sx, 12); g.rotateZ(Math.PI / 2); }
+    else if (p.shape === "cyly") { g = new THREE.CylinderGeometry(sz / 2, sz / 2, sy, 12); g.rotateX(Math.PI / 2); }
+    else g = new THREE.BoxGeometry(sx, sz, sy);
+    const mesh = new THREE.Mesh(g, mat(p.role));
+    mesh.position.copy(P((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2)).sub(parentPos);
+    mesh.castShadow = !["glass", "wall", "ceiling", "floor", "lampshade"].includes(p.role);
+    mesh.receiveShadow = true;
+    let edges = null;
+    const plain = ["wall", "ceiling", "floor", "glass"].includes(p.role) || p.soft || (p.shape && p.shape !== "box") || /^cloth/.test(p.role);
+    if (!plain) { edges = new THREE.LineSegments(new THREE.EdgesGeometry(g), edgeMat); edges.position.copy(mesh.position); }
+    return { mesh, edges };
   }
-  applySide();
+  function build() {
+    if (built) { scene.remove(built.root); built.root.traverse(o => { o.geometry && o.geometry.dispose(); }); }
+    const L = DATA.layouts[key()];
+    const root = new THREE.Group(); scene.add(root);
+    const units = {}, allMeshes = [], movers = {}, lights = [];
+    const moverDefs = Object.assign({}, DATA.room.movers, L.movers);
+    for (const [id, m] of Object.entries(moverDefs)) {
+      const g = new THREE.Group();
+      if (m.type === "hinge") g.position.copy(P(m.pivot[0], m.pivot[1], 0));
+      root.add(g);
+      const prev = built && built.movers[id];
+      movers[id] = { def: m, group: g, t: prev ? prev.t : 0, target: prev ? prev.target : 0 };
+    }
+    for (const p of DATA.room.parts.concat(L.parts)) {
+      const holder = p.mover ? movers[p.mover].group : root;
+      const { mesh, edges } = buildPart(p, holder.position.clone());
+      const unit = p.unit;
+      mesh.userData = { role: p.role, unit, mover: p.mover || null, holder };
+      holder.add(mesh); if (edges) holder.add(edges);
+      allMeshes.push(mesh);
+      (units[unit] = units[unit] || []).push({ mesh, edges });
+      if (p.light) {
+        const l = new THREE.PointLight(0xffc98a, 0.9, 260, 1.6);
+        l.position.copy(P((p.min[0] + p.max[0]) / 2, (p.min[1] + p.max[1]) / 2, p.min[2] + 4));
+        root.add(l); lights.push({ light: l, mesh });
+      }
+    }
+    built = { root, units, allMeshes, movers, lights };
+    ghosted.clear();
+    applyColours(); applyLamps(); applyMovers(true);
+  }
+  function applyLamps() {
+    for (const { light, mesh } of built.lights) { light.visible = state.lamps; }
+    mat("lampshade").emissiveIntensity = state.lamps ? 0.9 : 0.0;
+  }
+  function applyMovers(snap) {
+    for (const mv of Object.values(built.movers)) {
+      if (snap) mv.t = mv.target;
+      const m = mv.def;
+      if (m.type === "hinge") mv.group.rotation.y = THREE.MathUtils.degToRad(m.angle) * mv.t;
+      else mv.group.position.copy(P(m.vec[0] * mv.t, m.vec[1] * mv.t, m.vec[2] * mv.t));
+    }
+  }
+  function stepMovers(dt) {
+    const k = Math.min(1, dt / 220);
+    let moving = false;
+    for (const mv of Object.values(built.movers)) {
+      if (mv.t !== mv.target) {
+        const d = mv.target - mv.t;
+        mv.t = Math.abs(d) < 0.01 ? mv.target : mv.t + d * Math.max(k, 0.08);
+        moving = true;
+      }
+    }
+    if (moving) applyMovers(false);
+  }
+  function setAll(v) { for (const [id, mv] of Object.entries(built.movers)) if (id !== "room_door") mv.target = v; }
+  const reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   // ---- where you are ----
-  // "above" orbits round a point; the other places put you at eye height and you look around.
   const EYE = 155;
   const PLACES = {
-    doorway: { at: [46, 26, EYE], look: [90, 202, 85] },
-    drawers: { at: [62, 86, EYE], look: [L => L ? 70 : 136, 202, 108] },
-    desk:    { at: [140, 84, 118], look: [206, 84, 120] },
-    bed:     { at: [103, 168, 162], look: [103, 0, 115] },
+    A: { doorway: [[46, 26, EYE], [90, 202, 85]], middle: [[62, 86, EYE], [L => L ? 70 : 136, 202, 108]],
+         desk: [[140, 84, 118], [206, 84, 120]], bed: [[103, 168, 162], [103, 0, 115]] },
+    B: { doorway: [[46, 26, EYE], [110, 202, 60]], middle: [[84, 118, EYE], [206, 110, 100]],
+         desk: [[84, 150, 118], [84, 202, 100]], bed: [[160, 110, 105], [0, 110, 120]] },
+    C: { doorway: [[46, 26, EYE], [110, 202, 90]], middle: [[84, 118, EYE], [206, 110, 125]],
+         desk: [[84, 150, 118], [84, 202, 100]], bed: [[160, 110, 178], [0, 100, 120]] },
+    D: { doorway: [[46, 26, EYE], [110, 202, 70]], middle: [[66, 84, EYE], [180, 160, 85]],
+         desk: [[116, 64, 118], [116, 0, 105]], bed: [[103, 168, 162], [103, 0, 115]] },
   };
-  const ABOVE = { pos: P(-165, 70, 390), tgt: P(112, 100, 30), fov: 38 };
+  const ABOVE = { pos: P(-95, -150, 440), tgt: P(108, 104, 20), fov: 40 };
   let tween = null;
   function flyTo(pos, tgt, ms = 450) {
-    const reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (reduce || ms === 0) { camera.position.copy(pos); controls.target.copy(tgt); controls.update(); return; }
     tween = { p0: camera.position.clone(), t0: controls.target.clone(), p1: pos.clone(), t1: tgt.clone(), start: performance.now(), ms };
   }
@@ -297,7 +418,7 @@ if (renderer) {
     controls.target.lerpVectors(tween.t0, tween.t1, k);
     if (k >= 1) tween = null;
   }
-  function standing() { return state.view !== "above"; }
+  const standing = () => state.view !== "above";
   function configureControls() {
     if (standing()) {
       controls.enableZoom = false; controls.enablePan = false; controls.rotateSpeed = 0.35;
@@ -306,34 +427,27 @@ if (renderer) {
       controls.enableZoom = true; controls.enablePan = true; controls.rotateSpeed = 1;
       controls.minPolarAngle = 0; controls.maxPolarAngle = Math.PI;
     }
-    // one finger or one button does whatever "Drag to" says; two fingers always pinch and slide
     const slide = !standing() && state.drag === "slide";
     controls.mouseButtons.LEFT = slide ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE;
     controls.touches.ONE = slide ? THREE.TOUCH.PAN : THREE.TOUCH.ROTATE;
     controls.screenSpacePanning = true;
     document.getElementById("drag-ctl").hidden = standing();
     document.getElementById("hint").textContent = standing()
-      ? "Drag to look around. Double-click (or double-tap) the floor to walk there, or anything else to turn to it."
-      : (slide ? "Drag to slide the view. Switch back to Turn to orbit." : "Drag to orbit. Double-click (or double-tap) anything to centre on it. Faded units are in your way.");
+      ? "Drag to look around. Click a door or drawer to open it. Double-click the floor to walk there."
+      : (slide ? "Drag to slide the view. Click a door or drawer to open it."
+               : "Drag to orbit. Click a door or drawer to open it. Double-click anything to centre on it.");
   }
-  function lookFrom(eye, lookAt, ms) {
-    const dir = lookAt.clone().sub(eye).normalize();
-    flyTo(eye, eye.clone().add(dir), ms);
-  }
+  function lookFrom(eye, lookAt, ms) { const d = lookAt.clone().sub(eye).normalize(); flyTo(eye, eye.clone().add(d), ms); }
   function setView(v, ms = 450) {
     state.view = v;
+    for (const b of document.querySelectorAll("#seg-view button")) b.setAttribute("aria-pressed", String(b.dataset.v === v));
     configureControls();
-    if (v === "above") {
-      camera.fov = ABOVE.fov; camera.updateProjectionMatrix(); flyTo(ABOVE.pos, ABOVE.tgt, ms); return;
-    }
-    const pl = PLACES[v];
-    const look = pl.look.map(c => typeof c === "function" ? c(state.side === "L") : c);
+    if (v === "above") { camera.fov = ABOVE.fov; camera.updateProjectionMatrix(); flyTo(ABOVE.pos, ABOVE.tgt, ms); return; }
+    const [at, look] = PLACES[state.design][v];
+    const lk = look.map(c => typeof c === "function" ? c(state.side === "L") : c);
     camera.fov = 72; camera.updateProjectionMatrix();
-    lookFrom(P(...pl.at), P(...look), ms);
+    lookFrom(P(...at), P(...lk), ms);
   }
-  setView("above", 0);
-
-  // wheel zoom while standing changes the lens rather than moving you through the furniture
   canvas.addEventListener("wheel", e => {
     if (!standing()) return;
     e.preventDefault();
@@ -341,17 +455,34 @@ if (renderer) {
     camera.updateProjectionMatrix();
   }, { passive: false });
 
-  // standing room: the floor not covered by units (model cm), with a little clearance
+  // you can stand anywhere that no fixed unit below 100 cm covers, keeping 12 cm from it
   function canStand(x, y) {
-    const open = (x >= 12 && x <= 158 && y >= 64 && y <= 104);
-    const doorway = (x >= 18 && x <= 76 && y >= 12 && y <= 64);
-    return open || doorway;
+    if (x < 12 || x > W - 12 || y < 12 || y > D - 12) return false;
+    const L = DATA.layouts[key()];
+    for (const p of DATA.room.parts.concat(L.parts)) {
+      if (p.mover || p.min[2] > 100 || ["room", "trim", "window", "wall_left", "wall_right", "wall_door", "wall_window", "ceiling", "bedding", "props", "lamps", "chair", "door_frame"].includes(p.unit)) continue;
+      if (x > p.min[0] - 12 && x < p.max[0] + 12 && y > p.min[1] - 12 && y < p.max[1] + 12) return false;
+    }
+    return true;
   }
 
-  // ---- fade whatever sits between you and what you are looking at ----
-  const ghostMat = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.12, depthWrite: false });
-  const ghostEdge = new THREE.LineBasicMaterial({ color: 0x2b2f27, transparent: true, opacity: 0.5 });
-  const NEVER_FADE = new Set(["room", "trim", "window", "bedding", "mattress", "props"]);
+  // ---- walls on your side hide, units in the way fade ----
+  const HIDE_RULES = [
+    ["wall_left", p => p.x < 0], ["wall_right", p => p.x > W],
+    ["wall_door", p => -p.z < 0], ["door_frame", p => -p.z < -8], ["room_door", p => -p.z < -8],
+    ["wall_window", p => -p.z > D], ["ceiling", p => p.y > H],
+  ];
+  function updateVisibility() {
+    const p = camera.position;
+    const hidden = new Set(HIDE_RULES.filter(([, f]) => f(p)).map(([g]) => g));
+    // standing in the door's swing: hide the leaf so it does not fill the view
+    if (standing() && p.x < 86 && -p.z > 0 && -p.z < 80) hidden.add("room_door");
+    for (const [u, list] of Object.entries(built.units)) {
+      const vis = !hidden.has(u);
+      for (const { mesh, edges } of list) { mesh.visible = vis; if (edges) edges.visible = vis; }
+    }
+  }
+  const NEVER_FADE = new Set(["room", "trim", "window", "bedding", "mattress", "props", "lamps", "door_frame"]);
   const ray = new THREE.Raycaster();
   const ghosted = new Set();
   const offs = [[0, 0], [22, 0], [-22, 0], [0, 22], [0, -22]];
@@ -359,7 +490,7 @@ if (renderer) {
   function updateGhosts() {
     const want = new Set();
     if (!standing()) {
-      const vis = allMeshes.filter(m => m.userData.obj.visible);
+      const vis = built.allMeshes.filter(m => m.visible);
       camera.matrixWorld.extractBasis(right, up, dir);
       for (const [ox, oy] of offs) {
         aim.copy(controls.target).addScaledVector(right, ox).addScaledVector(up, oy);
@@ -371,32 +502,39 @@ if (renderer) {
         }
       }
     }
-    for (const u of ghosted) if (!want.has(u)) {
-      for (const { mesh, edges } of units[u]) { mesh.material = mat(mesh.userData.role); mesh.castShadow = true; if (edges) edges.material = edgeMat; }
+    for (const u of [...ghosted]) if (!want.has(u)) {
+      for (const { mesh, edges } of built.units[u] || []) { mesh.material = mat(mesh.userData.role); mesh.castShadow = true; if (edges) edges.material = edgeMat; }
       ghosted.delete(u);
     }
     for (const u of want) if (!ghosted.has(u)) {
-      for (const { mesh, edges } of units[u]) { mesh.material = ghostMat; mesh.castShadow = false; if (edges) edges.material = ghostEdge; }
+      for (const { mesh, edges } of built.units[u]) { mesh.material = ghostMat; mesh.castShadow = false; if (edges) edges.material = ghostEdge; }
       ghosted.add(u);
     }
   }
 
-  // ---- double-click (or double-tap) to centre, walk or turn ----
+  // ---- clicking: open/close; double-click: centre, walk or turn ----
   const ndc = new THREE.Vector2();
   function pick(clientX, clientY) {
     const r = canvas.getBoundingClientRect();
     ndc.set(((clientX - r.left) / r.width) * 2 - 1, -((clientY - r.top) / r.height) * 2 + 1);
     ray.setFromCamera(ndc, camera); ray.far = Infinity;
-    const hits = ray.intersectObjects(allMeshes.filter(m => m.userData.obj.visible && m.material !== ghostMat), false);
+    const hits = ray.intersectObjects(built.allMeshes.filter(m => m.visible && m.material !== ghostMat), false);
     return hits[0] || null;
+  }
+  function toggleAt(x, y) {
+    const hit = pick(x, y);
+    const id = hit && hit.object.userData.mover;
+    if (!id) return false;
+    const mv = built.movers[id]; mv.target = mv.target > 0.5 ? 0 : 1;
+    if (reduce) applyMovers(true);
+    return true;
   }
   function onDouble(clientX, clientY) {
     const hit = pick(clientX, clientY); if (!hit) return;
     const pt = hit.point;
     if (!standing()) {
       const back = camera.position.clone().sub(controls.target);
-      const d = Math.min(back.length(), 230);
-      flyTo(pt.clone().add(back.normalize().multiplyScalar(d)), pt);
+      flyTo(pt.clone().add(back.normalize().multiplyScalar(Math.min(back.length(), 230))), pt);
       return;
     }
     const mx = pt.x, my = -pt.z;
@@ -405,68 +543,48 @@ if (renderer) {
         const eye = P(mx, my, EYE);
         const look = controls.target.clone().sub(camera.position).normalize();
         flyTo(eye, eye.clone().add(look), 500);
-      } else {
-        flash("There is a unit there. Pick a clear patch of floor.");
-      }
-    } else {
-      lookFrom(camera.position.clone(), pt, 350);
-    }
+      } else flash("There is furniture there. Pick a clear patch of floor.");
+    } else lookFrom(camera.position.clone(), pt, 350);
   }
-  canvas.addEventListener("dblclick", e => onDouble(e.clientX, e.clientY));
-  let lastTap = 0;
+  // a click opens or closes; wait briefly so a double-click is not also two clicks
+  let down = null, clickTimer = null, lastTap = 0;
+  canvas.addEventListener("pointerdown", e => { down = { x: e.clientX, y: e.clientY }; });
   canvas.addEventListener("pointerup", e => {
-    if (e.pointerType !== "touch") return;
-    const now = performance.now();
-    if (now - lastTap < 320) { onDouble(e.clientX, e.clientY); lastTap = 0; } else lastTap = now;
+    if (!down || Math.hypot(e.clientX - down.x, e.clientY - down.y) > 6) { down = null; return; }
+    down = null;
+    const x = e.clientX, y = e.clientY, now = performance.now();
+    if (now - lastTap < 300) { clearTimeout(clickTimer); lastTap = 0; onDouble(x, y); return; }
+    lastTap = now;
+    clickTimer = setTimeout(() => toggleAt(x, y), 280);
+  });
+  canvas.addEventListener("pointermove", e => {
+    if (e.pointerType !== "mouse" || down) return;
+    const hit = pick(e.clientX, e.clientY);
+    canvas.classList.toggle("can-open", !!(hit && hit.object.userData.mover));
   });
   let flashTimer = null;
-  function flash(msg) {
-    const h = document.getElementById("hint"); const prev = h.textContent;
-    h.textContent = msg; clearTimeout(flashTimer);
-    flashTimer = setTimeout(configureControls, 2200);
-  }
+  function flash(msg) { document.getElementById("hint").textContent = msg; clearTimeout(flashTimer); flashTimer = setTimeout(configureControls, 2200); }
 
-  // walls on the camera's side of the room hide themselves
-  const HIDE_RULES = [
-    ["wall_left", p => p.x < 0], ["wall_right", p => p.x > W],
-    ["wall_door", p => -p.z < 0], ["door", p => -p.z < -8],
-    ["wall_window", p => -p.z > D], ["ceiling", p => p.y > H],
-    ["door_leaf", p => p.x < 86 && -p.z > 0 && -p.z < 80],
-  ];
-  function updateVisibility() {
-    const p = camera.position;
-    const hidden = new Set(HIDE_RULES.filter(([, f]) => f(p)).map(([g]) => g));
-    for (const [grp, objs] of Object.entries(groups)) {
-      for (const o of objs) {
-        const sideOk = o.userData.sideOn !== false;
-        o.visible = sideOk && !hidden.has(grp);
-      }
-    }
-  }
-
-  // size tags
+  // ---- size tags ----
+  const TAGS = {
+    A: s => [[[103, 112, 40], "Drawers <b>4 × 51</b>"], [[s ? 110 : 96, 157, 96], "Bed top <b>92</b>"],
+             [[s ? 8 : 198, 112, 205], "Head shelves <b>16</b>"], [[126, 55, 150], "Wardrobe <b>120 × 55</b>"], [[186, 84, 76], "Desk <b>57 × 40</b>"]],
+    B: () => [[[160, 110, 62], "Bed top <b>60</b>"], [[27, 120, 232], "Wardrobe <b>80 × 55</b>"], [[56, 181, 76], "Desk <b>112 × 42</b>"],
+              [[191, 101, 218], "Cupboards <b>202 × 30</b>"], [[114, 40, 24], "Shoe cubbies"]],
+    C: () => [[[160, 110, 150], "Bed top <b>130</b>"], [[114, 140, 60], "Sliding wardrobe <b>122</b>"], [[27, 120, 232], "Wardrobe <b>80 × 55</b>"],
+              [[54, 181, 76], "Desk <b>108 × 42</b>"], [[110, 26, 80], "Ladder"]],
+    D: () => [[[73, 112, 40], "Drawers <b>3 × 49</b>"], [[110, 157, 96], "Bed top <b>92</b>"], [[146, 55, 150], "Sliding wardrobe <b>110 × 60</b>"],
+              [[116, 22, 76], "Desk <b>60 × 45</b>"], [[8, 112, 205], "Head shelves <b>16</b>"]],
+  };
   const labelsEl = document.getElementById("labels");
-  function tags() {
-    const L = state.side === "L";
-    return [
-      { at: [103, 112, 40], html: "Drawers <b>4 × 51</b>" },
-      { at: [L ? 110 : 96, 157, 96], html: "Bed <b>190 × 90</b>, top 92" },
-      { at: [L ? 8 : 198, 112, 205], html: "Head shelves <b>16</b> wide" },
-      { at: [L ? 179 : 30, 112, 220], html: "Over-feet cabinet <b>" + (L ? 53 : 61) + " × 90</b>" },
-      { at: [126, 55, 150], html: "Wardrobe <b>120 × 55</b>" },
-      { at: [186, 84, 76], html: "Desk <b>57 × 40</b>" },
-      { at: [83, 84, 2], html: "Floor <b>166 × 57</b>" },
-    ];
-  }
   let tagEls = [];
   function buildTags() {
     labelsEl.innerHTML = "";
-    tagEls = tags().map(t => {
-      const el = document.createElement("div"); el.className = "tag"; el.innerHTML = t.html;
-      labelsEl.appendChild(el); return { el, v: P(...t.at) };
+    tagEls = TAGS[state.design](state.side === "L").map(([at, html]) => {
+      const el = document.createElement("div"); el.className = "tag"; el.innerHTML = html;
+      labelsEl.appendChild(el); return { el, v: P(...at) };
     });
   }
-  buildTags();
   const tmp = new THREE.Vector3();
   function placeTags() {
     labelsEl.hidden = !state.dims;
@@ -486,27 +604,41 @@ if (renderer) {
   }
   new ResizeObserver(resize).observe(stage); resize();
 
-  (function loop() {
-    stepTween(performance.now());
+  build(); buildTags(); setView("above", 0);
+  let last = performance.now();
+  (function loop(now) {
+    now = now || performance.now();
+    stepTween(now); stepMovers(now - last); last = now;
     controls.update(); updateVisibility(); updateGhosts(); renderer.render(scene, camera); placeTags();
     requestAnimationFrame(loop);
   })();
 
-  function wireSeg(id, key, after) {
+  // ---- controls ----
+  function wireSeg(id, keyName, after) {
     const seg = document.getElementById(id);
     seg.addEventListener("click", e => {
       const btn = e.target.closest("button"); if (!btn) return;
-      state[key] = btn.dataset.v;
+      state[keyName] = btn.dataset.v;
       for (const b of seg.querySelectorAll("button")) b.setAttribute("aria-pressed", String(b === btn));
       after();
     });
   }
-  wireSeg("seg-side", "side", () => { applySide(); buildTags(); renderCutList(); if (state.view === "drawers") setView("drawers"); });
-  wireSeg("seg-finish", "finish", applyFinish);
+  document.getElementById("designs").addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    state.design = b.dataset.v;
+    for (const x of document.querySelectorAll("#designs button")) x.setAttribute("aria-pressed", String(x === b));
+    build(); buildTags(); renderInfo(); if (standing()) setView(state.view);
+  });
+  wireSeg("seg-side", "side", () => { build(); buildTags(); renderInfo(); if (standing()) setView(state.view); });
   wireSeg("seg-view", "view", () => setView(state.view));
   wireSeg("seg-drag", "drag", configureControls);
-  controls.addEventListener("start", () => { tween = null; });
+  chips("chips-fin", FINISHES, "finish", "fin-name", applyColours);
+  chips("chips-wall", WALLS, "wall", "wall-name", applyColours);
+  document.getElementById("lamps").addEventListener("change", e => { state.lamps = e.target.checked; applyLamps(); });
   document.getElementById("dims").addEventListener("change", e => { state.dims = e.target.checked; });
+  document.getElementById("open-all").addEventListener("click", () => { setAll(1); if (reduce) applyMovers(true); });
+  document.getElementById("close-all").addEventListener("click", () => { setAll(0); if (reduce) applyMovers(true); });
+  controls.addEventListener("start", () => { tween = null; });
 }
 </script>
 
