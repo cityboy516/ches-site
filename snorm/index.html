@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en-GB" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Why do we standardise?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=STIX+Two+Text:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f4f2ec; --surface:#ffffff; --fg:#1b1e2a; --muted:#5b6070; --line:#cfccc3;
+  --blue:#1d6fd6; --orange:#c9630c; --gold:#8f6700; --teal:#12877b; --pink:#c03c7c; --green:#2f8a3a;
+  --on-gold:#ffffff;
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#14161f; --surface:#1d2030; --fg:#e6e6e6; --muted:#9aa0b4; --line:#363b52;
+    --blue:#4ea1ff; --orange:#ff9f43; --gold:#ffd166; --teal:#4fd1c5; --pink:#f687b3; --green:#9ae6b4;
+    --on-gold:#14161f; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#14161f; --surface:#1d2030; --fg:#e6e6e6; --muted:#9aa0b4; --line:#363b52;
+  --blue:#4ea1ff; --orange:#ff9f43; --gold:#ffd166; --teal:#4fd1c5; --pink:#f687b3; --green:#9ae6b4;
+  --on-gold:#14161f; color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{height:100%;background:var(--bg);scroll-padding-top:env(safe-area-inset-top,0px)}
+body{
+  height:100%;margin:0;display:flex;flex-direction:column;overflow:hidden;
+  background:var(--bg);color:var(--fg);
+  font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  -webkit-font-smoothing:antialiased;
+  padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px);
+}
+.top{display:flex;align-items:center;gap:12px;padding:10px 14px 2px;min-height:50px}
+.heading{flex:1;min-width:0;font-weight:600;font-size:clamp(15px,2.1vw,22px);line-height:1.25;transition:opacity .18s}
+.heading .expr{font-family:"STIX Two Text","Cambria Math","Times New Roman",serif;font-weight:400;font-size:1.1em;margin-left:.6em;color:var(--gold);white-space:nowrap}
+.tools{display:flex;gap:6px;flex:none}
+.icon{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--fg);display:grid;place-items:center;cursor:pointer;padding:0}
+.icon svg{width:18px;height:18px}
+.stage{flex:1;min-height:0;position:relative}
+canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:pointer}
+.caption{min-height:2.7em;display:flex;align-items:center;justify-content:center;text-align:center;padding:2px 18px;font-size:clamp(15px,2.2vw,24px);line-height:1.3;transition:opacity .18s}
+.controls{display:flex;align-items:center;gap:10px;padding:6px 12px 10px}
+.btn{height:44px;min-width:88px;padding:0 16px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--fg);font:600 15px Inter,system-ui,sans-serif;cursor:pointer}
+.btn.primary{background:var(--gold);color:var(--on-gold);border-color:transparent}
+.btn:disabled{opacity:.35;cursor:default}
+.progress{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:5px}
+.scene{font-size:12px;color:var(--muted)}
+.dots{display:flex;gap:7px}
+.dot{width:9px;height:9px;border-radius:50%;border:0;padding:0;background:var(--line);cursor:pointer;transition:transform .2s,background .2s}
+.dot.done{background:var(--gold);opacity:.5}
+.dot.cur{background:var(--gold);transform:scale(1.35)}
+.fade{opacity:0}
+button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+@media (max-height:480px){
+  .top{padding:4px 12px 0;min-height:42px}
+  .caption{min-height:1.9em;font-size:15px}
+  .controls{padding:2px 12px 6px}
+  .btn{height:38px}
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div id="heading" class="heading"></div>
+  <div class="tools">
+    <button class="icon" id="replay" aria-label="Replay this step (R)" title="Replay (R)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
+    </button>
+    <button class="icon" id="theme" aria-label="Switch light or dark" title="Light or dark">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></svg>
+    </button>
+    <button class="icon" id="fs" aria-label="Fullscreen (F)" title="Fullscreen (F)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+    </button>
+  </div>
+</header>
+<main class="stage" id="stage"><canvas id="cv" aria-label="Animation of normal distribution curves"></canvas></main>
+<div id="caption" class="caption" aria-live="polite"></div>
+<nav class="controls">
+  <button class="btn" id="back">Back</button>
+  <div class="progress"><span class="scene" id="scene"></span><span class="dots" id="dots"></span></div>
+  <button class="btn primary" id="next">Next</button>
+</nav>
+
+<script>
+(() => {
+'use strict';
+const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+const headEl = document.getElementById('heading'), capEl = document.getElementById('caption');
+const sceneEl = document.getElementById('scene'), dotsEl = document.getElementById('dots');
+const backBtn = document.getElementById('back'), nextBtn = document.getElementById('next');
+const UI = "Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif";
+const MATH = "'STIX Two Text', 'Cambria Math', 'Times New Roman', serif";
+
+let W = 300, H = 300, DPR = 1, G = { s: 1 };
+const C = {};
+const TOK = ['bg','surface','fg','muted','line','blue','orange','gold','teal','pink','green'];
+function readColors(){ const cs = getComputedStyle(document.documentElement); TOK.forEach(k => C[k] = cs.getPropertyValue('--' + k).trim()); }
+
+function hexRGB(h){ let x = h.replace('#',''); if (x.length === 3) x = x.split('').map(c => c + c).join(''); const n = parseInt(x, 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
+function rgba(h, a){ const [r,g,b] = hexRGB(h); return `rgba(${r},${g},${b},${Math.max(0, Math.min(1, a))})`; }
+function mixHex(a, b, t){ const A = hexRGB(a), B = hexRGB(b); return '#' + A.map((v,i) => Math.round(v + (B[i] - v) * t).toString(16).padStart(2,'0')).join(''); }
+const lerp = (a, b, t) => a + (b - a) * t;
+const clamp01 = x => Math.max(0, Math.min(1, x));
+const ease = u => u < 0.5 ? 4*u*u*u : 1 - Math.pow(-2*u + 2, 3) / 2;
+
+/* ---------- Layout ---------- */
+function layout(){
+  const s = Math.max(0.78, Math.min(1.5, Math.min(W, H * 1.35) / 560));
+  const L = Math.max(18 * s, W * 0.06), R = W - L;
+  const axisY = Math.max(H * 0.64, Math.min(H * 0.76, H - 140 * s)), topY = H * 0.13, plotH = axisY - topY;
+  const base = axisY + 46 * s;
+  const gap = Math.min(24 * s, (H - 8 * s - base) / 3.2);
+  G = { s, L, R, axisY, topY, plotH, unitH: plotH * 0.94 / 2.5, base, gap };
+}
+const px = p => G.L + (p + 1) / 2 * (G.R - G.L);
+const yv = h => G.axisY - h * G.unitH;
+const row = n => G.base + G.gap * (n - 0.4);
+function pdf(p, c, w){ const z = (p - c) / w; return Math.exp(-0.5 * z * z) / (w * 2.5066283); }
+
+function resize(){
+  const r = cv.parentElement.getBoundingClientRect();
+  W = Math.max(200, r.width); H = Math.max(200, r.height);
+  DPR = Math.min(window.devicePixelRatio || 1, 2.5);
+  cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
+  layout();
+}
+
+/* ---------- Drawing helpers ---------- */
+function setFont(size, weight = 400, family = UI, italic = false){ ctx.font = `${italic ? 'italic ' : ''}${weight} ${size * G.s}px ${family}`; }
+function text(str, x, y, o = {}){
+  const { size = 16, weight = 400, color = C.fg, alpha = 1, align = 'center', base = 'alphabetic', family = UI, italic = false } = o;
+  if (alpha <= 0.01) return 0;
+  setFont(size, weight, family, italic);
+  ctx.textAlign = align; ctx.textBaseline = base; ctx.fillStyle = rgba(color, alpha);
+  ctx.fillText(str, x, y);
+  return ctx.measureText(str).width;
+}
+function measure(str, size, weight = 400, family = UI, italic = false){ setFont(size, weight, family, italic); return ctx.measureText(str).width; }
+function fitSize(str, size, weight, maxW, family = UI){ const w = measure(str, size, weight, family); return w > maxW ? size * maxW / w : size; }
+function wrap(str, maxW, size, weight){
+  const words = str.split(' '), lines = []; let cur = '';
+  words.forEach(wd => { const t = cur ? cur + ' ' + wd : wd; if (measure(t, size, weight) > maxW && cur){ lines.push(cur); cur = wd; } else cur = t; });
+  if (cur) lines.push(cur); return lines;
+}
+function rr(x, y, w, h, r){ r = Math.min(r, w/2, h/2); ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+function line(x1, y1, x2, y2, col, a, lw){ if (a <= 0.01) return; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.strokeStyle = rgba(col, a); ctx.lineWidth = lw; ctx.stroke(); }
+
+function strokeCurve(c, w, col, a, draw = 1, mx = px, my = yv){
+  if (a <= 0.004 || draw <= 0.001) return;
+  const n = 240, from = -1.04, to = from + 2.08 * draw, pts = [];
+  for (let i = 0; i <= n; i++){ const p = from + (to - from) * i / n; pts.push([mx(p), my(pdf(p, c, w))]); }
+  ctx.beginPath(); ctx.moveTo(pts[0][0], my(0)); pts.forEach(q => ctx.lineTo(q[0], q[1])); ctx.lineTo(pts[n][0], my(0)); ctx.closePath();
+  ctx.fillStyle = rgba(col, 0.09 * a); ctx.fill();
+  ctx.beginPath(); pts.forEach((q, i) => i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]));
+  ctx.strokeStyle = rgba(col, a); ctx.lineWidth = 2.6 * G.s; ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.stroke();
+}
+function shade(c, w, z1, z2, col, a){
+  if (a <= 0.004) return;
+  const p1 = Math.max(-1.04, c + z1 * w), p2 = Math.min(1.04, c + z2 * w);
+  if (p2 <= p1) return;
+  const n = 120; ctx.beginPath(); ctx.moveTo(px(p1), G.axisY);
+  for (let i = 0; i <= n; i++){ const p = p1 + (p2 - p1) * i / n; ctx.lineTo(px(p), yv(pdf(p, c, w))); }
+  ctx.lineTo(px(p2), G.axisY); ctx.closePath(); ctx.fillStyle = rgba(col, a); ctx.fill();
+}
+
+/* ---------- Axes ---------- */
+const fmtSigned = v => v > 0 ? '+' + v : v < 0 ? '\u2212' + (-v) : '0';
+const range = (a, b, st) => { const r = []; for (let v = a; v <= b + 1e-9; v += st) r.push(v); return r; };
+const AX = {
+  marks: { p: v => (v - 60) / 50, vals: range(10, 110, 10), fmt: v => '' + v, title: 'Marks' },
+  above: { p: v => v / 48, vals: range(-48, 48, 12), fmt: fmtSigned, title: 'Marks above average' },
+  z:     { p: v => v / 4, vals: range(-4, 4, 1), fmt: v => v < 0 ? '\u2212' + (-v) : '' + v, title: 'Standard deviations from the mean (z)' },
+  test:  { p: v => (v - 70) / 40, vals: [35, 50, 65, 80, 95, 110], fmt: v => '' + v, title: 'Test marks' }
+};
+function drawTicks(ax, a){
+  const s = G.s, sp = (G.R - G.L) * Math.abs(ax.p(ax.vals[1]) - ax.p(ax.vals[0])) / 2;
+  const skip = sp < 26 * s ? 2 : 1;
+  ax.vals.forEach((v, i) => {
+    const x = px(ax.p(v)); if (x < G.L - 14 * s || x > G.R + 14 * s) return;
+    line(x, G.axisY, x, G.axisY + 5 * s, C.fg, 0.6 * a, 1.2 * s);
+    if (i % skip === 0) text(ax.fmt(v), x, G.axisY + 19 * s, { size: 12.5, color: C.muted, alpha: a });
+  });
+  text(ax.title, (G.L + G.R) / 2, G.axisY + 37 * s, { size: 12.5, color: C.muted, alpha: a });
+}
+
+/* ---------- Pieces ---------- */
+function bracket(c, w, y, col, a, label){
+  if (a <= 0.01) return; const s = G.s, x1 = px(c), x2 = px(c + w);
+  ctx.beginPath(); ctx.moveTo(x1, y - 6 * s); ctx.lineTo(x1, y); ctx.lineTo(x2, y); ctx.lineTo(x2, y - 6 * s);
+  ctx.strokeStyle = rgba(col, a); ctx.lineWidth = 2 * s; ctx.stroke();
+  const tw = measure(label, 12.5, 600);
+  if (x2 + 8 * s + tw < W - 4) text(label, x2 + 8 * s, y + 4 * s, { size: 12.5, weight: 600, color: col, alpha: a, align: 'left' });
+  else text(label, x1 - 8 * s, y + 4 * s, { size: 12.5, weight: 600, color: col, alpha: a, align: 'right' });
+}
+function ruler(c, w, z, prog, y, col, a, unitLabel, zLab){
+  if (a <= 0.01) return; const s = G.s, h = 8 * s, x0 = px(c), xu = px(c + w);
+  ctx.strokeStyle = rgba(col, 0.65 * a); ctx.lineWidth = 1.2 * s; ctx.strokeRect(x0, y - h/2, xu - x0, h);
+  const len = prog * z;
+  if (len > 0.001){
+    for (let k = 0; k < len; k++){
+      const e = Math.min(k + 1, len); ctx.fillStyle = rgba(col, (k % 2 ? 0.45 : 0.9) * a);
+      ctx.fillRect(px(c + k * w), y - h/2, px(c + e * w) - px(c + k * w), h);
+    }
+    const xe = px(c + len * w); line(xe, y - h, xe, y + h, col, a, 2 * s);
+    const v = Math.round(len * 100) / 100;
+    text(`${v} SD${v === 1 ? '' : 's'}`, Math.max(xe, xu) + 7 * s, y + 4.5 * s, { size: 12.5, weight: 600, color: col, alpha: a, align: 'left' });
+  } else { ctx.fillStyle = rgba(col, 0.35 * a); ctx.fillRect(x0, y - h/2, xu - x0, h); }
+  text(unitLabel, x0 - 8 * s, y + 4.5 * s, { size: 12.5, weight: 600, color: col, alpha: a * (1 - zLab), align: 'right' });
+  text('1 SD', x0 - 8 * s, y + 4.5 * s, { size: 12.5, weight: 600, color: col, alpha: a * zLab, align: 'right' });
+}
+function dot(c, w, z, col, a, drop, name, side){
+  if (a <= 0.01) return; const s = G.s, p = c + z * w, x = px(p);
+  const y = yv(pdf(p, c, w)) - (1 - drop) * 46 * s;
+  ctx.save(); ctx.setLineDash([4 * s, 4 * s]); line(x, y, x, G.axisY, col, 0.7 * a * drop, 1.5 * s); ctx.restore();
+  ctx.beginPath(); ctx.arc(x, y, 6.5 * s, 0, Math.PI * 2); ctx.fillStyle = rgba(col, a); ctx.fill();
+  ctx.lineWidth = 2.2 * s; ctx.strokeStyle = rgba(C.bg, a); ctx.stroke();
+  if (side === 'r') text(name, x + 11 * s, y + 22 * s, { size: 13.5, weight: 600, color: col, alpha: a, align: 'left' });
+  else text(name, x - 11 * s, y - 9 * s, { size: 13.5, weight: 600, color: col, alpha: a, align: 'right' });
+}
+function drawHouse(a, w){
+  if (a <= 0.01) return; const s = G.s, wf = w / 0.24, hf = 0.24 / w;
+  const bw = 62 * s * wf, bh = 46 * s * hf, roof = 22 * s * hf;
+  const cx = G.R - 52 * s, by = G.topY + 0.56 * G.plotH, x = cx - bw / 2, y = by - bh;
+  ctx.lineWidth = 2 * s; ctx.strokeStyle = rgba(C.fg, 0.9 * a); ctx.lineJoin = 'round';
+  ctx.beginPath(); ctx.rect(x, y, bw, bh); ctx.moveTo(x - 4 * s, y); ctx.lineTo(cx, y - roof); ctx.lineTo(x + bw + 4 * s, y); ctx.stroke();
+  ctx.fillStyle = rgba(C.gold, 0.55 * a);
+  [[0.12, 0.14], [0.68, 0.14], [0.12, 0.5], [0.68, 0.5]].forEach(([fx, fy]) => { ctx.fillRect(x + fx * bw, y + fy * bh, 0.2 * bw, 0.22 * bh); });
+  ctx.fillStyle = rgba(C.muted, 0.8 * a); ctx.fillRect(x + 0.4 * bw, y + 0.58 * bh, 0.2 * bw, 0.42 * bh);
+}
+function drawZFormula(cx, cy, size, alpha, boxed){
+  if (alpha <= 0.01) return; const s = G.s;
+  const lhs = 'Z = ', num = 'X \u2212 \u03bc', den = '\u03c3';
+  const wl = measure(lhs, size, 400, MATH, true), wn = measure(num, size, 400, MATH, true), wd = measure(den, size, 400, MATH, true);
+  const fw = Math.max(wn, wd) + 0.4 * size * s, tot = wl + fw, x0 = cx - tot / 2, fx = x0 + wl;
+  text(lhs, x0, cy + 0.33 * size * s, { size, family: MATH, italic: true, align: 'left', alpha });
+  line(fx, cy, fx + fw, cy, C.fg, alpha, Math.max(1, 0.06 * size * s));
+  text(num, fx + fw / 2, cy - 0.22 * size * s, { size, family: MATH, italic: true, alpha });
+  text(den, fx + fw / 2, cy + 0.92 * size * s, { size, family: MATH, italic: true, alpha });
+  if (boxed){ const pad = 0.5 * size * s; rr(x0 - pad, cy - 1.25 * size * s, tot + 2 * pad, 2.5 * size * s, 8 * s); ctx.strokeStyle = rgba(C.gold, alpha); ctx.lineWidth = 1.6 * s; ctx.stroke(); }
+}
+
+const STUDENTS = [
+  { name: 'Aisha', sub: 'Maths test', score: 68, avg: 56, col: 'blue', z: '68 \u2192 z = 1.5' },
+  { name: 'Ben', sub: 'English test', score: 74, avg: 62, col: 'orange', z: '74 \u2192 z = 0.75' }
+];
+function cardGeom(){ const s = G.s; return { cw: Math.min(W * 0.42, 250 * s), ch: 176 * s, gap: Math.min(W * 0.06, 40 * s) }; }
+function drawCards(S, t){
+  const s = G.s, { cw, ch, gap } = cardGeom();
+  if (S.cardsO > 0.01){
+    const k = lerp(1, 0.6, S.cardsPos), y = lerp(H * 0.05, 8 * s, S.cardsPos);
+    const xs = [[W/2 - gap/2 - cw, 8 * s], [W/2 + gap/2, W - 8 * s - cw * 0.6]];
+    STUDENTS.forEach((d, i) => {
+      const col = C[d.col], x = lerp(xs[i][0], xs[i][1], S.cardsPos);
+      ctx.save(); ctx.translate(x, y); ctx.scale(k, k); ctx.globalAlpha = S.cardsO;
+      rr(0, 0, cw, ch, 12 * s); ctx.fillStyle = C.surface; ctx.fill(); ctx.strokeStyle = rgba(col, 0.55); ctx.lineWidth = 1.5 * s; ctx.stroke();
+      ctx.fillStyle = col; ctx.fillRect(0, 14 * s, 4 * s, ch - 28 * s);
+      const tx = 18 * s;
+      text(d.name, tx, 32 * s, { size: 20, weight: 600, align: 'left' });
+      text(d.sub, tx, 52 * s, { size: 13.5, color: C.muted, align: 'left' });
+      text(String(d.score), tx, 100 * s, { size: 42, weight: 700, color: col, align: 'left' });
+      text(`Class average: ${d.avg}`, tx, 128 * s, { size: 13.5, color: C.muted, align: 'left', alpha: S.avgO });
+      if (S.plus12 > 0) text(`+${Math.round(12 * S.plus12)} above average`, tx, 154 * s, { size: 14.5, weight: 600, color: col, align: 'left', alpha: Math.min(1, S.plus12 * 5) });
+      ctx.restore();
+    });
+    if (S.barsO > 0.01){
+      const a = S.barsO * S.cardsO, yb = H * 0.9, top = H * 0.05 + ch + 40 * s, maxH = Math.max(30, yb - top);
+      STUDENTS.forEach((d, i) => {
+        const col = C[d.col], cx = xs[i][0] + cw / 2, bw = cw * 0.36, h = maxH * (d.score / 80) * S.barsGrow;
+        ctx.fillStyle = rgba(col, 0.85 * a); ctx.fillRect(cx - bw / 2, yb - h, bw, h);
+        text(String(Math.round(d.score * S.barsGrow)), cx, yb - h - 8 * s, { size: 17, weight: 700, color: col, alpha: a });
+        if (i === 1 && S.qO > 0.01){ const pulse = 1 + 0.08 * Math.sin(t * 4); text('?', cx, yb - h - 34 * s, { size: 34 * pulse, weight: 700, color: C.gold, alpha: S.qO * a }); }
+      });
+      line(xs[0][0], yb, xs[1][0] + cw, yb, C.fg, 0.5 * a, 1.2 * s);
+    }
+  }
+  if (S.zCardsO > 0.01){
+    STUDENTS.forEach((d, i) => {
+      const col = C[d.col], cwz = Math.max(measure(d.z, 14.5, 600), measure(d.name, 14, 600)) + 26 * s, chz = 56 * s;
+      const x = i ? W - 8 * s - cwz : 8 * s;
+      ctx.save(); ctx.globalAlpha = S.zCardsO; ctx.translate(x, 8 * s);
+      rr(0, 0, cwz, chz, 10 * s); ctx.fillStyle = C.surface; ctx.fill(); ctx.strokeStyle = rgba(col, 0.55); ctx.lineWidth = 1.5 * s; ctx.stroke();
+      text(d.name, 13 * s, 22 * s, { size: 14, weight: 600, align: 'left' });
+      text(d.z, 13 * s, 43 * s, { size: 14.5, weight: 600, color: col, align: 'left' });
+      ctx.restore();
+    });
+  }
+}
+
+const SM = [
+  { name: 'Heights', dist: 'N(170, 10\u00b2)', c: -0.15, w: 0.3, col: 'teal', o: 'sm1O', m: 'm1' },
+  { name: 'Battery life', dist: 'N(12, 1.5\u00b2)', c: 0.2, w: 0.18, col: 'pink', o: 'sm2O', m: 'm2' },
+  { name: 'Journey time', dist: 'N(35, 6\u00b2)', c: 0.05, w: 0.42, col: 'green', o: 'sm3O', m: 'm3' }
+];
+function drawSmall(S){
+  const s = G.s, colW = (G.R - G.L) / 3, pad = 6 * s;
+  SM.forEach((d, i) => {
+    const a = S[d.o]; if (a <= 0.004) return; const m = S[d.m];
+    const bl = G.L + i * colW + pad, br = G.L + (i + 1) * colW - pad, y0 = 6 * s, top = y0 + 34 * s, base = G.topY + 0.33 * G.plotH;
+    const l = lerp(bl, G.L, m), r = lerp(br, G.R, m), by = lerp(base, G.axisY, m);
+    const unit = lerp((base - top) * 0.92 * d.w * 2.5066, G.unitH, m);
+    const mx = p => l + (p + 1) / 2 * (r - l), my = h => by - h * unit;
+    line(bl, base, br, base, C.fg, 0.45 * a * (1 - m), 1.2 * s);
+    strokeCurve(lerp(d.c, 0, m), lerp(d.w, 0.25, m), mixHex(C[d.col], C.gold, m), a, 1, mx, my);
+    const cx = (bl + br) / 2, fa = a * (1 - m);
+    text(d.name, cx, y0 + 13 * s, { size: 13, weight: 600, color: C[d.col], alpha: fa });
+    text(d.dist, cx, y0 + 29 * s, { size: 12.5, color: C.muted, alpha: fa });
+  });
+}
+
+/* ---------- Beats ---------- */
+const DEF = {
+  titleO:0, gO:0, gDraw:0, gc:0, gw:0.25, gLabelO:0, gBenShade:0, gAishaShade:0, tailO:0, markerO:0, markerZO:0, markerXO:0,
+  cardsO:0, cardsPos:0, barsO:0, barsGrow:0, qO:0, avgO:0, plus12:0, zCardsO:0, verdictO:0,
+  axisO:0, axisDraw:0, axMarksO:0, axAboveO:0, axZO:0, axTestO:0,
+  bO:0, bDraw:0, bc:-0.08, bw:0.16, bMix:0, oO:0, oDraw:0, oc:0.04, ow:0.32,
+  aO:0, aDrop:0, benO:0, benDrop:0, band1:0, band2:0, bBrO:0, oBrO:0, houseO:0,
+  rulerO:0, rulerProg:0, goldRulerO:0, areaO:0, formulaO:0, workO:0,
+  sm1O:0, sm2O:0, sm3O:0, m1:0, m2:0, m3:0, summaryO:0, dim:0, probO:0, eqO:0, ansO:0
+};
+const EXPR1 = '<span class="expr"><i>X</i> \u2212 <i>\u03bc</i></span>';
+const EXPR2 = '<span class="expr">(<i>X</i> \u2212 <i>\u03bc</i>) / <i>\u03c3</i></span>';
+const BEATS = [
+  { scene:1, heading:'', caption:'Tap, swipe or press the right arrow to begin.', dur:2.6,
+    set:{ titleO:[1,0,0.45], gO:[0.35,0.1,0.5], gDraw:[1,0.1,1] } },
+
+  { scene:2, heading:'The puzzle', caption:'Who did better?', dur:1.6,
+    set:{ titleO:[0,0,0.35], gO:[0,0,0.35], cardsO:[1,0.3,1] } },
+  { scene:2, caption:'Ben scored higher, but is that fair?', dur:2.2,
+    set:{ barsO:[1,0,0.15], barsGrow:[1,0.05,0.75], qO:[1,0.7,1] } },
+  { scene:2, caption:'Both are 12 marks above average. A draw?', dur:2.6,
+    set:{ qO:[0,0,0.25], avgO:[1,0,0.35], plus12:[1,0.4,1] } },
+
+  { scene:3, heading:'Spread matters', caption:'Maths marks are bunched up. English marks are spread out.', dur:3.8,
+    set:{ cardsPos:[1,0,0.3], barsO:[0,0,0.2], axisO:[1,0.2,0.35], axisDraw:[1,0.2,0.45], axMarksO:[1,0.3,0.5],
+          bO:[1,0.4,0.45], bDraw:[1,0.4,0.7], oO:[1,0.68,0.73], oDraw:[1,0.68,1] } },
+  { scene:3, caption:'Same 12 marks above average. Same achievement?', dur:2,
+    set:{ aO:[1,0,0.3], aDrop:[1,0,0.55], benO:[1,0.35,0.6], benDrop:[1,0.35,0.95] } },
+  { scene:3, caption:'12 above average is rare in Maths, ordinary in English.', dur:2.2,
+    set:{ bBrO:[1,0,0.5], oBrO:[1,0.45,1] } },
+
+  { scene:4, heading:'Every normal curve is the same shape', caption:'About 68% within 1 SD, about 95% within 2 SD.', dur:3.2,
+    set:{ cardsO:[0,0,0.3], oO:[0,0,0.3], aO:[0,0,0.3], benO:[0,0,0.3], bBrO:[0,0,0.3], oBrO:[0,0,0.3], band1:[1,0.3,0.6], band2:[1,0.62,1] } },
+  { scene:4, caption:'Move it, stretch it: the proportions stay the same.', dur:3,
+    set:{ bc:0.04, bw:0.32, bMix:1 } },
+  { scene:4, caption:'Same shape, different size.', dur:3.6,
+    set:{ houseO:[1,0,0.2], bc:[-0.08,0.22,1], bw:[0.16,0.22,1], bMix:[0,0.22,1] } },
+
+  { scene:5, heading:'Step 1: subtract the mean' + EXPR1, caption:'First, line up the centres.', dur:2.2,
+    set:{ band1:[0,0,0.3], band2:[0,0,0.3], houseO:[0,0,0.3], oO:[1,0.25,0.6], aO:[1,0.45,0.85], benO:[1,0.45,0.85] } },
+  { scene:5, caption:'68 becomes +12. 74 becomes +12.', dur:3.2,
+    set:{ bc:[0,0.05,0.8], bw:[1/6,0.05,0.8], oc:[0,0.05,0.8], ow:[1/3,0.05,0.8], axMarksO:[0,0,0.45], axAboveO:[1,0.5,0.95] } },
+  { scene:5, caption:'Both +12, but the curves are still different widths.', dur:2,
+    set:{ bBrO:[1,0,0.5], oBrO:[1,0.3,0.8] } },
+
+  { scene:6, heading:'Step 2: divide by the standard deviation' + EXPR2, caption:'Measure in standard deviations, not marks.', dur:2,
+    set:{ bBrO:[0,0,0.4], oBrO:[0,0,0.4], rulerO:[1,0.3,0.8] } },
+  { scene:6, caption:'Aisha is 1.5 SDs above average. Ben is only 0.75.', dur:3.2,
+    set:{ rulerProg:1 } },
+  { scene:6, caption:'Stretch or squash until the spreads match.', dur:4.2,
+    set:{ goldRulerO:[1,0,0.2], areaO:[1,0,0.2], bw:[0.25,0.2,0.9], ow:[0.25,0.2,0.9], axAboveO:[0,0.2,0.5], axZO:[1,0.55,0.9] } },
+  { scene:6, caption:'Subtract the mean, then divide by the SD.', dur:2.2,
+    set:{ formulaO:[1,0,0.5], workO:[1,0.4,1] } },
+
+  { scene:7, heading:'One curve', caption:'Two different tests. One curve.', dur:3,
+    set:{ rulerO:[0,0,0.3], goldRulerO:[0,0,0.3], areaO:[0,0,0.3], formulaO:[0,0,0.3], workO:[0,0,0.3],
+          gO:[1,0.3,0.7], bO:[0,0.4,0.85], oO:[0,0.4,0.85], gLabelO:[1,0.6,1] } },
+  { scene:7, caption:'Ben beat about 77% of his class. Aisha beat about 93%.', dur:3.2,
+    set:{ gBenShade:[1,0,0.5], gAishaShade:[1,0.55,1] } },
+  { scene:7, caption:'Aisha did better, despite the lower mark.', dur:2,
+    set:{ gLabelO:[0,0,0.4], verdictO:[1,0.2,0.8], zCardsO:[1,0.2,0.8] } },
+
+  { scene:8, heading:'Any normal, one curve', caption:'Heights, batteries, journeys: every normal fits the same curve.', dur:6.5,
+    set:{ verdictO:[0,0,0.12], zCardsO:[0,0,0.12], gBenShade:[0,0,0.15], gAishaShade:[0,0,0.15], aO:[0,0,0.15], benO:[0,0,0.15],
+          sm1O:[1,0.06,0.16], sm2O:[1,0.1,0.2], sm3O:[1,0.14,0.24], m1:[1,0.26,0.5], m2:[1,0.5,0.74], m3:[1,0.74,0.98] } },
+  { scene:8, caption:'One formula, one curve.', dur:2,
+    set:{ summaryO:[1,0.1,0.8], dim:[1,0,0.6], sm1O:[0,0,0.4], sm2O:[0,0,0.4], sm3O:[0,0,0.4] } },
+
+  { scene:9, heading:'Working backwards', caption:'We know the mean and a percentage. What\u2019s the SD?', dur:2.2,
+    set:{ summaryO:[0,0,0.35], dim:[0,0,0.4], probO:[1,0.3,0.9] } },
+  { scene:9, caption:'On the standard curve, the top 10% starts at z = 1.2816.', dur:2.6,
+    set:{ tailO:[1,0,0.6], markerO:[1,0.4,0.9], markerZO:[1,0.4,0.9] } },
+  { scene:9, caption:'Undo the standardising: 0 becomes 65, and 1.2816 becomes 80.', dur:4.2,
+    set:{ gc:[-0.125,0.1,0.8], gw:[0.2925,0.1,0.8], axZO:[0,0.1,0.42], axTestO:[1,0.48,0.82], markerZO:[0,0.1,0.42], markerXO:[1,0.48,0.82], eqO:[1,0.78,1] } },
+  { scene:9, caption:'Standardising works both ways.', dur:2,
+    set:{ ansO:[1,0,0.6] } }
+];
+const SCENES = 9;
+const STATES = [], WINS = [];
+(() => {
+  let prev = { ...DEF }, head = '';
+  BEATS.forEach(b => {
+    if (b.heading !== undefined) head = b.heading; else b.heading = head;
+    const st = { ...prev }, win = {};
+    Object.entries(b.set).forEach(([k, v]) => { if (Array.isArray(v)){ st[k] = v[0]; win[k] = [v[1], v[2]]; } else st[k] = v; });
+    STATES.push(st); WINS.push(win); prev = st;
+  });
+})();
+
+/* ---------- Playback ---------- */
+const reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
+let cur = 0, t0 = performance.now();
+function stateAt(now){
+  const b = BEATS[cur], from = cur ? STATES[cur - 1] : DEF, to = STATES[cur], win = WINS[cur];
+  const T = reduce.matches ? 1 : clamp01((now - t0) / (b.dur * 1000));
+  const S = {};
+  for (const k in to){
+    if (from[k] === to[k]) { S[k] = to[k]; continue; }
+    const [a, z] = win[k] || [0, 1];
+    S[k] = lerp(from[k], to[k], ease(clamp01((T - a) / Math.max(1e-6, z - a))));
+  }
+  return S;
+}
+function go(i){ cur = Math.max(0, Math.min(BEATS.length - 1, i)); t0 = performance.now(); updateUI(); }
+const next = () => go(cur === BEATS.length - 1 ? 0 : cur + 1);
+const back = () => { if (cur > 0) go(cur - 1); };
+const replay = () => go(cur);
+
+function setFade(el, html){
+  if (el.dataset.v === html) return; el.dataset.v = html;
+  el.classList.add('fade'); clearTimeout(el._t);
+  el._t = setTimeout(() => { el.innerHTML = html; el.classList.remove('fade'); }, 180);
+}
+function updateUI(){
+  const b = BEATS[cur];
+  setFade(headEl, b.heading); setFade(capEl, b.caption);
+  sceneEl.textContent = `Scene ${b.scene} of ${SCENES}`;
+  dotsEl.innerHTML = '';
+  let n = 0;
+  BEATS.forEach((x, i) => {
+    if (x.scene !== b.scene) return; n++;
+    const d = document.createElement('button');
+    d.className = 'dot' + (i < cur ? ' done' : '') + (i === cur ? ' cur' : '');
+    d.setAttribute('aria-label', `Scene ${x.scene}, step ${n}`);
+    d.addEventListener('click', () => go(i));
+    dotsEl.appendChild(d);
+  });
+  backBtn.disabled = cur === 0;
+  nextBtn.textContent = cur === BEATS.length - 1 ? 'Restart' : 'Next';
+}
+
+/* ---------- Frame ---------- */
+function draw(S, t){
+  const s = G.s;
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H);
+
+  // gold standard curve and its shading
+  if (S.gO > 0.004){
+    shade(S.gc, S.gw, -4.3, -4.3 + 5.05 * S.gBenShade, C.orange, 0.45 * S.gO * Math.min(1, S.gBenShade * 8));
+    shade(S.gc, S.gw, 0.75, 0.75 + 0.75 * S.gAishaShade, C.blue, 0.55 * S.gO * Math.min(1, S.gAishaShade * 8));
+    shade(S.gc, S.gw, 1.2816, 9, C.gold, 0.42 * S.gO * S.tailO);
+    strokeCurve(S.gc, S.gw, C.gold, S.gO, S.gDraw);
+  }
+  drawSmall(S);
+
+  // Maths and English curves
+  const bcol = mixHex(C.blue, C.orange, S.bMix);
+  if (S.bO > 0.004){
+    shade(S.bc, S.bw, -2, 2, bcol, 0.14 * S.band2 * S.bO);
+    shade(S.bc, S.bw, -1, 1, bcol, 0.30 * S.band1 * S.bO);
+  }
+  strokeCurve(S.oc, S.ow, C.orange, S.oO, S.oDraw);
+  strokeCurve(S.bc, S.bw, bcol, S.bO, S.bDraw);
+  if (S.band1 > 0.01 && S.bO > 0.01){
+    const pk = pdf(S.bc, S.bc, S.bw);
+    text('68%', px(S.bc), yv(pk * 0.4), { size: 17, weight: 700, alpha: S.band1 * S.bO });
+  }
+  if (S.band2 > 0.01 && S.bO > 0.01){
+    const a = S.band2 * S.bO, p0 = S.bc + 1.55 * S.bw, lx = px(S.bc + 2.25 * S.bw), ly = yv(pdf(S.bc + 1.5 * S.bw, S.bc, S.bw)) - 4 * s;
+    line(px(p0), yv(pdf(p0, S.bc, S.bw) * 0.45), lx - 4 * s, ly - 5 * s, C.fg, 0.6 * a, 1.2 * s);
+    text('95%', lx, ly, { size: 15, weight: 700, alpha: a, align: 'left' });
+  }
+
+  // axis
+  if (S.axisO > 0.01){
+    const x0 = G.L - 10 * s, x1 = G.R + 10 * s;
+    line(x0, G.axisY, lerp(x0, x1, S.axisDraw), G.axisY, C.fg, 0.75 * S.axisO, 1.5 * s);
+    [['marks', S.axMarksO], ['above', S.axAboveO], ['z', S.axZO], ['test', S.axTestO]].forEach(([k, a]) => { if (a * S.axisO > 0.01) drawTicks(AX[k], a * S.axisO); });
+  }
+
+  drawHouse(S.houseO, S.bw);
+
+  bracket(S.bc, S.bw, row(1), C.blue, S.bBrO, '1 SD = 8 marks');
+  bracket(S.oc, S.ow, row(2), C.orange, S.oBrO, '1 SD = 16 marks');
+  ruler(S.bc, S.bw, 1.5, S.rulerProg, row(1), C.blue, S.rulerO, '1 SD = 8 marks', S.axZO);
+  ruler(S.oc, S.ow, 0.75, S.rulerProg, row(2), C.orange, S.rulerO, '1 SD = 16 marks', S.axZO);
+  if (S.goldRulerO > 0.01){
+    const y = row(3), h = 8 * s; ctx.fillStyle = rgba(C.gold, 0.9 * S.goldRulerO);
+    ctx.fillRect(px(0), y - h/2, px(0.25) - px(0), h);
+    text('Target: 1 SD', px(0) - 8 * s, y + 4.5 * s, { size: 12.5, weight: 600, color: C.gold, alpha: S.goldRulerO, align: 'right' });
+  }
+
+  dot(S.bc, S.bw, 1.5, C.blue, S.aO, S.aDrop, 'Aisha', 'r');
+  dot(S.oc, S.ow, 0.75, C.orange, S.benO, S.benDrop, 'Ben', 'l');
+
+  text('Total area = 1', G.L, G.axisY - 0.14 * G.plotH, { size: 13.5, weight: 500, color: C.muted, alpha: S.areaO, align: 'left' });
+
+  if (S.formulaO > 0.01 || S.workO > 0.01){
+    const size = 22, cy = Math.max(G.topY * 0.55, 1.3 * size * s + 6 * s);
+    drawZFormula(W / 2, cy, size, S.formulaO, false);
+    const y1 = cy + 1.25 * size * s + 22 * s;
+    text('Aisha: (68 \u2212 56) / 8 = 1.5', W / 2, y1, { size: 15, weight: 500, color: C.blue, alpha: S.workO });
+    text('Ben: (74 \u2212 62) / 16 = 0.75', W / 2, y1 + 22 * s, { size: 15, weight: 500, color: C.orange, alpha: S.workO });
+  }
+
+  if (S.gLabelO > 0.01){
+    const lab = 'Z ~ N(0, 1): the standard normal', size = fitSize(lab, 15, 600, W * 0.9);
+    text(lab, px(S.gc), yv(pdf(S.gc, S.gc, S.gw)) - 14 * s, { size, weight: 600, color: C.gold, alpha: S.gLabelO * S.gO });
+  }
+  if (S.gBenShade > 0.01 || S.gAishaShade > 0.01){
+    [[row(1), C.orange, 'Ben beat about 77%', S.gBenShade], [row(2), C.blue, 'Aisha beat about 93%', S.gAishaShade]].forEach(([y, col, lab, v]) => {
+      const a = Math.min(1, v * 1.5); if (a <= 0.01) return;
+      ctx.fillStyle = rgba(col, 0.8 * a); ctx.fillRect(G.L, y - 6 * s, 12 * s, 12 * s);
+      text(lab, G.L + 20 * s, y + 4.5 * s, { size: 13.5, weight: 600, color: col, alpha: a, align: 'left' });
+    });
+  }
+
+  drawCards(S, t);
+  if (S.verdictO > 0.01){
+    const y = G.topY + 0.2 * G.plotH, size = fitSize('Aisha did better.', 26, 700, W * 0.6);
+    const w1 = measure('Aisha', size, 700), w2 = measure(' did better.', size, 700), x0 = W / 2 - (w1 + w2) / 2;
+    text('Aisha', x0, y, { size, weight: 700, color: C.blue, align: 'left', alpha: S.verdictO });
+    text(' did better.', x0 + w1, y, { size, weight: 700, align: 'left', alpha: S.verdictO });
+  }
+
+  // marker for working backwards
+  if (S.markerO > 0.01){
+    const p = S.gc + 1.2816 * S.gw, x = px(p), y = yv(pdf(p, S.gc, S.gw));
+    line(x, G.axisY, x, y, C.fg, 0.85 * S.markerO, 2 * s);
+    const lx = x + 8 * s, ly = y - 30 * s;
+    text('Top 10%', lx, ly, { size: 13.5, weight: 600, align: 'left', alpha: S.markerO });
+    text('z = 1.2816', lx, ly + 18 * s, { size: 15, family: MATH, italic: true, color: C.gold, align: 'left', alpha: S.markerO * S.markerZO });
+    text('80 marks', lx, ly + 18 * s, { size: 14, weight: 600, color: C.gold, align: 'left', alpha: S.markerO * S.markerXO });
+  }
+  if (S.probO > 0.01 || S.eqO > 0.01 || S.ansO > 0.01){
+    const pad = 10 * s, size = 15, prob = '10% of students scored over 80. The mean was 65. Find the standard deviation.';
+    const lines = wrap(prob, G.R - G.L - 2 * pad, size, 500), lh = size * s * 1.35, ch = pad * 2 + lines.length * lh;
+    ctx.save(); ctx.globalAlpha = S.probO;
+    rr(G.L, 6 * s, G.R - G.L, ch, 10 * s); ctx.fillStyle = C.surface; ctx.fill(); ctx.strokeStyle = rgba(C.line, 1); ctx.lineWidth = 1.2 * s; ctx.stroke();
+    lines.forEach((ln, i) => text(ln, W / 2, 6 * s + pad + lh * (i + 0.78), { size, weight: 500 }));
+    ctx.restore();
+    const ey = Math.max(6 * s + ch + 30 * s, G.topY + 0.18 * G.plotH);
+    text('80 = 65 + 1.2816\u03c3', W / 2, ey, { size: 21, family: MATH, alpha: S.eqO });
+    text('\u03c3 = 15 / 1.2816 \u2248 11.7', W / 2, ey + 30 * s, { size: 21, family: MATH, color: C.gold, alpha: S.ansO });
+  }
+
+  if (S.titleO > 0.01){
+    const t1 = 'Why do we standardise?', t2 = 'The normal distribution, and one curve to rule them all';
+    const s1 = fitSize(t1, 44, 700, W * 0.88), s2 = fitSize(t2, 17, 400, W * 0.88);
+    text(t1, W / 2, H * 0.42, { size: s1, weight: 700, alpha: S.titleO });
+    text(t2, W / 2, H * 0.42 + (s2 * 1.4 + 14) * s, { size: s2, color: C.muted, alpha: S.titleO });
+  }
+
+  if (S.dim > 0.01){ ctx.fillStyle = rgba(C.bg, 0.78 * S.dim); ctx.fillRect(0, 0, W, H); }
+  if (S.summaryO > 0.01){
+    const a = S.summaryO, cw = Math.min(W * 0.9, 540 * s), ch = 214 * s, x = (W - cw) / 2, y = Math.max(6 * s, (H - ch) / 2);
+    ctx.save(); ctx.globalAlpha = a;
+    rr(x, y, cw, ch, 16 * s); ctx.fillStyle = C.surface; ctx.fill(); ctx.strokeStyle = rgba(C.line, 1); ctx.lineWidth = 1.2 * s; ctx.stroke();
+    drawZFormula(W / 2, y + 54 * s, 24, 1, true);
+    const items = ['Compare different things fairly', 'Every normal question becomes one curve', 'Work backwards to find an unknown mean or SD'];
+    const size = Math.min(...items.map(it => fitSize(it, 15, 500, cw - 64 * s)));
+    items.forEach((it, i) => {
+      const yy = y + (122 + 30 * i) * s;
+      ctx.beginPath(); ctx.arc(x + 26 * s, yy - 5 * s, 4 * s, 0, Math.PI * 2); ctx.fillStyle = C.gold; ctx.fill();
+      text(it, x + 40 * s, yy, { size, weight: 500, align: 'left' });
+    });
+    ctx.restore();
+  }
+}
+
+function frame(now){ draw(stateAt(now), now / 1000); requestAnimationFrame(frame); }
+
+/* ---------- Input ---------- */
+nextBtn.addEventListener('click', next);
+backBtn.addEventListener('click', back);
+document.getElementById('replay').addEventListener('click', replay);
+document.getElementById('theme').addEventListener('click', () => {
+  const root = document.documentElement;
+  root.dataset.theme = root.dataset.theme === 'light' ? 'dark' : 'light';
+  readColors();
+});
+const fsBtn = document.getElementById('fs');
+if (!(document.fullscreenEnabled || document.webkitFullscreenEnabled)) fsBtn.style.display = 'none';
+function toggleFS(){
+  const d = document, el = d.documentElement;
+  try {
+    if (d.fullscreenElement || d.webkitFullscreenElement){ const p = (d.exitFullscreen || d.webkitExitFullscreen).call(d); if (p && p.catch) p.catch(() => {}); }
+    else { const p = (el.requestFullscreen || el.webkitRequestFullscreen).call(el); if (p && p.catch) p.catch(() => {}); }
+  } catch (e) {}
+}
+fsBtn.addEventListener('click', toggleFS);
+
+window.addEventListener('keydown', e => {
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const k = e.key;
+  if (k === 'ArrowRight' || k === ' ' || k === 'PageDown' || k === 'Enter'){ if (k === 'Enter' && e.target.tagName === 'BUTTON') return; e.preventDefault(); next(); }
+  else if (k === 'ArrowLeft' || k === 'PageUp'){ e.preventDefault(); back(); }
+  else if (k === 'r' || k === 'R') replay();
+  else if (k === 'f' || k === 'F') toggleFS();
+  else if (/^[1-9]$/.test(k)){ const i = BEATS.findIndex(b => b.scene === +k); if (i >= 0) go(i); }
+});
+
+let pd = null;
+cv.addEventListener('pointerdown', e => { pd = { x: e.clientX, y: e.clientY }; });
+cv.addEventListener('pointerup', e => {
+  if (!pd) return; const dx = e.clientX - pd.x, dy = e.clientY - pd.y; pd = null;
+  if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)){ dx < 0 ? next() : back(); return; }
+  if (Math.abs(dx) < 12 && Math.abs(dy) < 12){ const r = cv.getBoundingClientRect(); (e.clientX - r.left) < r.width / 2 ? back() : next(); }
+});
+cv.addEventListener('pointercancel', () => { pd = null; });
+
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', readColors);
+new ResizeObserver(resize).observe(document.getElementById('stage'));
+
+readColors(); resize(); updateUI();
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
