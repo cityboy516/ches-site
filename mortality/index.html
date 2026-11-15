@@ -65,6 +65,7 @@ tr.hl td{background:color-mix(in srgb,var(--accent) 8%,transparent)}
 <label>Random seed<input type="number" id="seed" value="12345" step="1"></label>
 <label>Output ages up to<input type="number" id="maxX" value="22" min="1" max="30" step="1"></label>
 </div>
+<p class="note" style="margin:4px 0 0">Each family's first child is born at a random point between the start of the "from" year and the end of the "to" year. Set both to the same year for a single cohort, or widen the range to blend cohorts (for example 2000 to 2025 for families started over the last 25 years).</p>
 <h3>Family size</h3>
 <div class="grid">
 <label>Mean children (target)<input type="number" id="nMean" value="6" min="0.5" max="20" step="0.1"></label>
@@ -78,9 +79,12 @@ tr.hl td{background:color-mix(in srgb,var(--accent) 8%,transparent)}
 <label>Mother's age at first birth: SD<input type="number" id="mSd" value="2" min="0" max="10" step="0.1"></label>
 <label>Father's age gap (father minus mother): mean<input type="number" id="gMean" value="2" min="-10" max="20" step="0.1"></label>
 <label>Father's age gap: SD<input type="number" id="gSd" value="2" min="0" max="10" step="0.1"></label>
-<label>Birth interval (years): mean<input type="number" id="iMean" value="2" min="0.8" max="10" step="0.1"></label>
-<label>Birth interval (years): SD<input type="number" id="iSd" value="0.7" min="0" max="5" step="0.1"></label>
-<label>Birth interval: minimum (years)<input type="number" id="iMin" value="0.9" min="0.5" max="5" step="0.1"></label>
+<label>Mother's age at last birth: mean<input type="number" id="lMean" value="39" min="18" max="55" step="0.1"></label>
+<label>Mother's age at last birth: SD<input type="number" id="lSd" value="3" min="0" max="10" step="0.1"></label>
+<label>Average gap in a family: minimum (years)<input type="number" id="gAvgMin" value="1.5" min="0.5" max="10" step="0.1"></label>
+<label>Average gap in a family: maximum (years)<input type="number" id="gAvgMax" value="5" min="0.5" max="15" step="0.1"></label>
+<label>Any single gap: minimum (years)<input type="number" id="iMin" value="1" min="0.5" max="5" step="0.1"></label>
+<label>Gap variability within a family (CV)<input type="number" id="gCv" value="0.35" min="0" max="2" step="0.05"></label>
 <label>Mother's age at any birth: minimum<input type="number" id="mMin" value="18" min="14" max="30" step="1"></label>
 <label>Mother's age at any birth: maximum<input type="number" id="mMax" value="45" min="35" max="55" step="1"></label>
 <label>Father's age at any birth: minimum<input type="number" id="fMin" value="19" min="14" max="30" step="1"></label>
@@ -97,6 +101,10 @@ tr.hl td{background:color-mix(in srgb,var(--accent) 8%,transparent)}
 <button id="sens" class="secondary">Run 80% / 100% / 120% sensitivities</button>
 <button id="reset" class="secondary">Reset defaults</button>
 <span id="status"></span>
+</div>
+<div class="actions" id="linkRow" style="display:none">
+<button id="copy" class="secondary">Copy link to this run</button>
+<input type="text" id="link" readonly style="flex:1;min-width:200px;padding:7px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text2);font:12px ui-monospace,Menlo,Consolas,monospace">
 </div>
 <div id="err" class="err"></div>
 </div>
@@ -138,8 +146,9 @@ tr.hl td{background:color-mix(in srgb,var(--accent) 8%,transparent)}
 <ul>
 <li><b>Mortality:</b> ONS 2024-based past and projected period mortality rates (q<sub>x</sub>), England and Wales, principal projection, by single year of age and calendar year. Rates for 2000 to 2024 are actual ONS rates (including the COVID years); 2025 to 2074 are the ONS projection. After 2074, each age's average improvement over 2064 to 2074 is continued. Ages above 100 use the age 100 rate.</li>
 <li>The mortality percentages scale the ONS rates; the extra improvement adjusts projected rates by (1 &minus; i)<sup>year &minus; 2024</sup>, so a positive value means lighter future mortality than ONS.</li>
-<li><b>Family formation:</b> the target number of children is drawn from a negative binomial with the given mean and SD (Poisson if the SD is at or below &radic;mean), then held within the minimum and maximum. The mother's age at first birth is a truncated normal; the father's age is the mother's age plus a normal age gap, fixed for the family. Further births follow gamma-distributed intervals.</li>
-<li>Births stop when the target is reached, when the next birth would put either parent outside the age limits, or when either parent has died. Realised family sizes are therefore a little below the target; the summary above shows the realised figures.</li>
+<li><b>Family formation:</b> the target number of children is drawn from a negative binomial with the given mean and SD (Poisson if the SD is at or below &radic;mean), then held within the minimum and maximum. The mother's age at first birth is a truncated normal; the father's age is the mother's age plus a normal age gap, fixed for the family.</li>
+<li><b>Spacing:</b> for families of two or more, the mother's age at last birth is drawn from its own normal distribution, so the childbearing span runs from first to last birth and the number of children sets the gaps within it. The span is then held so that the family's average gap lies between the minimum and maximum average gap (so a large family that starts late is compressed, and a small family is not stretched over 20 years), and so that neither parent passes the maximum age. Each gap is at least the minimum single gap; the rest of the span is shared out with random weights, with the variability input controlling how uneven the gaps are. If the span cannot fit the target number of children, the family is reduced.</li>
+<li>Births stop early only if a parent dies. Realised family sizes and ages are shown in the summary above.</li>
 <li>Both parents are alive at the first birth by construction. The two parents' deaths are independent. No divorce, remarriage, step-parents, twins or posthumous births. Children's own mortality is ignored, which slightly overstates children left behind at older ages.</li>
 <li>Deaths are simulated in annual steps from the first birth, using the rate for the parent's age and the calendar year at the start of each step, with the date of death uniform within the year.</li>
 </ul>
@@ -204,14 +213,14 @@ function simulate(P, onProgress) {
     }
     return P.nMin;
   }
-  const iK = P.iSd > 0 ? Math.pow(P.iMean / P.iSd, 2) : 0, iTheta = P.iSd > 0 ? P.iSd * P.iSd / P.iMean : 0;
-  function interval() { const v = P.iSd > 0 ? gamma(iK) * iTheta : P.iMean; return Math.max(P.iMin, v); }
+  const gK = P.gCv > 0 ? 1 / (P.gCv * P.gCv) : 0;
+  const gaps = [];
 
   // accumulators, index x = 1..X
   const z = () => new Float64Array(X + 1);
   const R = {
     fam: 0, kids: 0, sumKids: 0, sumKids2: 0, sumTarget: 0, cutAge: 0, cutDeath: 0,
-    mFirst: 0, mLast: 0, fFirst: 0, fLast: 0,
+    mFirst: 0, mLast: 0, fFirst: 0, fLast: 0, sumGap: 0, gapFams: 0,
     lostM: z(), lostF: z(), lostAny: z(), lostBoth: z(),
     momDie: z(), dadDie: z(), momKids: z(), dadKids: z(), sizeDist: new Float64Array(P.nMax + 1)
   };
@@ -231,13 +240,34 @@ function simulate(P, onProgress) {
         for (let k = 0; k < 200; k++) { fA = mA + P.gMean + P.gSd * normal(); if (fA >= P.fMin && fA <= P.fMax) { ok = true; break; } }
         if (!ok) fA = Math.min(P.fMax, Math.max(P.fMin, fA));
         const target = drawN();
+        // Childbearing span: from first birth to a drawn age at last birth, kept within
+        // the average-gap limits for this family size and the parents' age limits.
+        let nPlan = target, span = 0;
+        if (target > 1) {
+          let aL = 0; ok = false;
+          for (let k = 0; k < 200; k++) { aL = P.lMean + P.lSd * normal(); if (aL >= mA && aL <= P.mMax) { ok = true; break; } }
+          if (!ok) aL = Math.min(P.mMax, Math.max(mA, aL));
+          const cap = Math.min(P.mMax - mA, P.fMax - fA);
+          span = aL - mA;
+          span = Math.max(span, (nPlan - 1) * P.gAvgMin);
+          span = Math.min(span, (nPlan - 1) * P.gAvgMax, cap);
+          while (nPlan > 1 && span < (nPlan - 1) * P.iMin - 1e-9) nPlan--;
+          if (nPlan < target) R.cutAge++;
+          if (nPlan === 1) span = 0;
+        }
+        // Individual gaps: each at least the minimum, the remainder shared out randomly
+        gaps.length = 0;
+        if (nPlan > 1) {
+          const extra = span - (nPlan - 1) * P.iMin;
+          let sw = 0;
+          for (let i = 0; i < nPlan - 1; i++) { const w = gK > 0 ? gamma(gK) : 1; gaps.push(w); sw += w; }
+          for (let i = 0; i < nPlan - 1; i++) gaps[i] = P.iMin + extra * gaps[i] / sw;
+        }
         const mD = deathTime(qF, mA, t0, t0 + H), fD = deathTime(qM, fA, t0, t0 + H);
         births.length = 0; births.push(t0);
         let t = t0;
-        while (births.length < target) {
-          t += interval();
-          const dt = t - t0;
-          if (mA + dt > P.mMax || fA + dt > P.fMax) { R.cutAge++; break; }
+        for (let i = 0; i < gaps.length; i++) {
+          t += gaps[i];
           if (t >= mD || t >= fD) { R.cutDeath++; break; }
           births.push(t);
         }
@@ -245,6 +275,7 @@ function simulate(P, onProgress) {
         R.fam++; R.kids += n; R.sumKids += n; R.sumKids2 += n * n; R.sumTarget += target;
         R.sizeDist[Math.min(n, P.nMax)]++;
         R.mFirst += mA; R.fFirst += fA; R.mLast += mA + (last - t0); R.fLast += fA + (last - t0);
+        if (n > 1) { R.sumGap += (last - t0) / (n - 1); R.gapFams++; }
         for (let i = 0; i < n; i++) {
           const b = births[i];
           for (let x = 1; x <= X; x++) {
@@ -271,10 +302,11 @@ function simulate(P, onProgress) {
 }
 
 // UI
-const ids = ['yFrom','yTo','nFam','seed','maxX','nMean','nSd','nMin','nMax','mMean','mSd','gMean','gSd','iMean','iSd','iMin','mMin','mMax','fMin','fMax','multM','multF','imp'];
+const ids = ['yFrom','yTo','nFam','seed','maxX','nMean','nSd','nMin','nMax','mMean','mSd','gMean','gSd','lMean','lSd','gAvgMin','gAvgMax','iMin','gCv','mMin','mMax','fMin','fMax','multM','multF','imp'];
 const defaults = {}; ids.forEach(id => defaults[id] = document.getElementById(id).value);
 function readParams() {
   const P = {}; ids.forEach(id => P[id] = parseFloat(document.getElementById(id).value));
+  P._raw = {}; ids.forEach(id => P._raw[id] = document.getElementById(id).value.trim());
   const errs = [];
   ids.forEach(id => { if (!isFinite(P[id])) errs.push('Missing value: ' + id); });
   if (errs.length) throw errs.join('; ');
@@ -283,7 +315,8 @@ function readParams() {
   if (P.yFrom < 2000 || P.yTo > 2060 || P.yTo < P.yFrom) errs.push('First-child years must run from 2000 to 2060, with "to" no earlier than "from".');
   if (P.nMax < P.nMin) errs.push('Maximum children must be at least the minimum.');
   if (P.mMax <= P.mMin || P.fMax <= P.fMin) errs.push('Maximum ages must exceed minimum ages.');
-  if (P.iMean <= 0) errs.push('Mean birth interval must be positive.');
+  if (P.gAvgMax < P.gAvgMin) errs.push('Maximum average gap must be at least the minimum average gap.');
+  if (P.gAvgMin < P.iMin) errs.push('Minimum average gap cannot be below the minimum single gap.');
   if (P.nFam < 100 || P.nFam > 2000000) errs.push('Number of families must be between 100 and 2,000,000.');
   if (P.maxX < 1 || P.maxX > 30) errs.push('Output ages must be between 1 and 30.');
   if (errs.length) throw errs.join(' ');
@@ -305,7 +338,8 @@ function render(P, R) {
     [f2(R.sumTarget / R.fam), 'Target children per family'],
     [f1(R.mFirst / R.fam) + ' / ' + f1(R.mLast / R.fam), "Mother's mean age at first / last birth"],
     [f1(R.fFirst / R.fam) + ' / ' + f1(R.fLast / R.fam), "Father's mean age at first / last birth"],
-    [pct(R.cutAge / R.fam), 'Families cut short by age limits'],
+    [f2(R.sumGap / R.gapFams), 'Average gap between children (families of 2+)'],
+    [pct(R.cutAge / R.fam), 'Families cut short by age or gap limits'],
     [pct(R.cutDeath / R.fam), 'Families cut short by a parent’s death']
   ];
   document.getElementById('stats').innerHTML = S.map(s => `<div class="stat"><div class="v">${s[0]}</div><div class="k">${s[1]}</div></div>`).join('');
@@ -367,6 +401,7 @@ async function doRun() {
   const R = await simulate(P, p => statusEl.textContent = 'Running… ' + Math.round(p * 100) + '%');
   statusEl.textContent = `Done in ${((performance.now() - t) / 1000).toFixed(1)}s`;
   lastP = P; lastR = R; render(P, R);
+  lastRaw = P._raw; updateLink();
   document.getElementById('sensCard').style.display = 'none';
   btns.forEach(b => b.disabled = false);
 }
@@ -391,13 +426,36 @@ async function doSens() {
   for (const [name, fn] of rows) for (const x of ages) h += `<tr class="${x === ages[0] ? '' : ''}"><td>${x === ages[0] ? name : ''}</td><td>${x}</td>` + out.map(([, R]) => `<td>${fn(R)(x)}</td>`).join('') + '</tr>';
   document.getElementById('tSens').innerHTML = h;
   document.getElementById('sensCard').style.display = '';
+  lastRaw = P._raw; updateLink();
   statusEl.textContent = 'Sensitivities done';
   btns.forEach(b => b.disabled = false);
+}
+// Shareable links: the assumptions used for the last run are written into the page's
+// address as a query string, and read back (then run) when the page is opened.
+function runQuery() { const q = new URLSearchParams(); ids.forEach(id => q.set(id, lastRaw[id])); return q.toString(); }
+let lastRaw = null;
+function updateLink() {
+  const q = runQuery();
+  const web = /^https?:$/.test(location.protocol);
+  const url = web ? location.origin + location.pathname + '?' + q : '?' + q;
+  try { if (web) history.replaceState(null, '', location.pathname + '?' + q + location.hash); } catch (e) {}
+  document.getElementById('link').value = url;
+  document.getElementById('linkRow').style.display = '';
+}
+document.getElementById('copy').addEventListener('click', async () => {
+  const box = document.getElementById('link');
+  try { await navigator.clipboard.writeText(box.value); statusEl.textContent = 'Link copied'; }
+  catch (e) { box.focus(); box.select(); statusEl.textContent = 'Link selected: copy it from the box'; }
+});
+function applyQuery() {
+  let q; try { q = new URLSearchParams(location.search); } catch (e) { return; }
+  ids.forEach(id => { const v = q.get(id); if (v !== null && v !== '' && isFinite(parseFloat(v))) document.getElementById(id).value = v; });
 }
 document.getElementById('run').addEventListener('click', doRun);
 document.getElementById('sens').addEventListener('click', doSens);
 document.getElementById('reset').addEventListener('click', () => { ids.forEach(id => document.getElementById(id).value = defaults[id]); });
 window.addEventListener('resize', () => { if (lastR) drawChart(lastR, lastP.maxX); });
+applyQuery();
 doRun();
 </script>
 </body>
